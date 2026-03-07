@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Windowing;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -20,6 +21,9 @@ namespace Pickles_Playlist_Editor
 
         private PlaylistNodeContent? _contextMenuNode;
         private PlaylistNodeContent? _selectedNode;
+        private PlaylistNodeContent? _pendingRenameNode;
+        private DateTimeOffset _lastTreeTapTime;
+        private PlaylistNodeContent? _lastTreeTappedNode;
 
         private readonly MenuFlyout _treeContextMenu;
 
@@ -223,18 +227,165 @@ namespace Pickles_Playlist_Editor
             }
         }
 
+        private void PlaylistTreeView_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            if (_busyOverlayVisible) return;
+
+            if (e.OriginalSource is not FrameworkElement fe)
+                return;
+
+            var content = FindNodeContentFromElement(fe);
+            if (content == null || content.Level < 1)
+                return;
+
+            var now = DateTimeOffset.Now;
+            bool isSecondClick = _lastTreeTappedNode == content && (now - _lastTreeTapTime).TotalMilliseconds <= 700;
+            _lastTreeTappedNode = content;
+            _lastTreeTapTime = now;
+
+            if (isSecondClick)
+            {
+                _pendingRenameNode = content;
+                _ = BeginRenameFromPendingAsync();
+            }
+        }
+
+        private async Task BeginRenameFromPendingAsync()
+        {
+            await Task.Delay(250);
+            var node = _pendingRenameNode;
+            _pendingRenameNode = null;
+            if (node == null || !PlaylistTreeView.SelectedItems.Contains(node))
+                return;
+
+            await RenameNodeAsync(node);
+        }
+
+        private async Task RenameNodeAsync(PlaylistNodeContent node)
+        {
+            if (node.Level == 1)
+                await RenamePlaylistAsync(node);
+            else if (node.Level == 2)
+                await RenameSongAsync(node);
+        }
+
+        private async Task RenamePlaylistAsync(PlaylistNodeContent node)
+        {
+            if (!Playlists.TryGetValue(node.Name, out var playlist))
+                return;
+
+            var currentName = playlist.Name;
+            var renameBox = new TextBox
+            {
+                Text = currentName,
+                SelectionStart = 0,
+                SelectionLength = currentName.Length,
+                PlaceholderText = "Playlist name"
+            };
+
+            var dialog = new ContentDialog
+            {
+                Title = "Rename Playlist",
+                Content = renameBox,
+                PrimaryButtonText = "Save",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            var result = await dialog.ShowAsync();
+            if (result != ContentDialogResult.Primary)
+                return;
+
+            var newName = renameBox.Text?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(newName) || string.Equals(newName, currentName, StringComparison.Ordinal))
+                return;
+
+            try
+            {
+                playlist.Rename(newName);
+                LoadPlaylistsAndExpand(newName);
+                var renamed = FindPlaylistNode(newName);
+                if (renamed != null)
+                {
+                    PlaylistTreeView.SelectedItems.Clear();
+                    PlaylistTreeView.SelectedItems.Add(renamed);
+                    _selectedNode = renamed;
+                }
+            }
+            catch (Exception ex)
+            {
+                await ShowDialogAsync(AppStrings.Dlg_Error, ex.Message);
+            }
+        }
+
+        private async Task RenameSongAsync(PlaylistNodeContent node)
+        {
+            if (node.Parent == null || !Playlists.TryGetValue(node.Parent.Name, out var playlist))
+                return;
+
+            var song = playlist.Options.FirstOrDefault(x => string.Equals(x.Name, node.Name, StringComparison.Ordinal));
+            if (song == null)
+                return;
+
+            var currentName = song.Name;
+            var renameBox = new TextBox
+            {
+                Text = currentName,
+                SelectionStart = 0,
+                SelectionLength = currentName.Length,
+                PlaceholderText = "Song name"
+            };
+
+            var dialog = new ContentDialog
+            {
+                Title = "Rename Song",
+                Content = renameBox,
+                PrimaryButtonText = "Save",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            var result = await dialog.ShowAsync();
+            if (result != ContentDialogResult.Primary)
+                return;
+
+            var newName = renameBox.Text?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(newName) || string.Equals(newName, currentName, StringComparison.Ordinal))
+                return;
+
+            song.Name = newName;
+            playlist.Save();
+            LoadPlaylistsAndExpand(playlist.Name);
+            var parentNode = FindPlaylistNode(playlist.Name);
+            var renamedSong = parentNode == null ? null : FindSongNode(parentNode, newName);
+            if (renamedSong != null)
+            {
+                PlaylistTreeView.SelectedItems.Clear();
+                PlaylistTreeView.SelectedItems.Add(renamedSong);
+                _selectedNode = renamedSong;
+            }
+        }
+
+        private PlaylistNodeContent? FindNodeContentFromElement(FrameworkElement fe)
+        {
+            DependencyObject? cur = fe;
+            while (cur != null)
+            {
+                if (cur is TreeViewItem tvi)
+                    return PlaylistTreeView.ItemFromContainer(tvi) as PlaylistNodeContent;
+                cur = VisualTreeHelper.GetParent(cur);
+            }
+
+            return null;
+        }
+
         private void PlaylistTreeView_RightTapped(object sender, RightTappedRoutedEventArgs e)
         {
             if (e.OriginalSource is Microsoft.UI.Xaml.FrameworkElement fe)
             {
-                PlaylistNodeContent? content = null;
-                DependencyObject? cur = fe;
-                while (cur != null && content == null)
-                {
-                    if (cur is TreeViewItem tvi)
-                        content = PlaylistTreeView.ItemFromContainer(tvi) as PlaylistNodeContent;
-                    cur = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(cur);
-                }
+                var content = FindNodeContentFromElement(fe);
                 if (content == null) return;
 
                 int level = content.Level;
