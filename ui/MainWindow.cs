@@ -29,6 +29,10 @@ namespace Pickles_Playlist_Editor
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, uint attr, ref int attrValue, int attrSize);
+
+        [DllImport("user32.dll")]
+        private static extern uint GetDoubleClickTime();
+
         private const uint DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
 
         public MainWindow()
