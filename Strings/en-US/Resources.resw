@@ -50,6 +50,7 @@
   <data name="YouTubeDlg.CloseButtonText" xml:space="preserve"><value>Close</value></data>
   <data name="YouTubeUrlLabel.Text" xml:space="preserve"><value>YouTube URL:</value></data>
   <data name="ModeLabel.Text" xml:space="preserve"><value>Mode:</value></data>
+  <data name="TargetPlaylistLabel.Text" xml:space="preserve"><value>Target Playlist:</value></data>
   <data name="SingleTrackItem.Content" xml:space="preserve"><value>Single Track</value></data>
   <data name="PlaylistItem.Content" xml:space="preserve"><value>Playlist</value></data>
   <data name="Btn_Yes" xml:space="preserve"><value>Yes</value></data>
