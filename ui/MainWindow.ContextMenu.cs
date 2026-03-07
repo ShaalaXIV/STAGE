@@ -16,8 +16,6 @@ namespace Pickles_Playlist_Editor
         private MenuFlyout BuildContextMenu()
         {
             var flyout = new MenuFlyout();
-            var rename = new MenuFlyoutItem { Text = AppStrings.Menu_Rename };
-            rename.Click += RenameMenuItem_Click;
             var extract = new MenuFlyoutItem { Text = AppStrings.Menu_ExtractAudio };
             extract.Click += ExtractAudioMenuItem_Click;
             var normalize = new MenuFlyoutItem { Text = AppStrings.Menu_NormalizeAudio };
