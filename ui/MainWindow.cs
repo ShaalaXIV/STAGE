@@ -21,6 +21,7 @@ namespace Pickles_Playlist_Editor
 
         private PlaylistNodeContent? _contextMenuNode;
         private PlaylistNodeContent? _selectedNode;
+        private PlaylistNodeContent? _pendingRenameNode;
         private DateTimeOffset _lastTreeTapTime;
         private PlaylistNodeContent? _lastTreeTappedNode;
 
@@ -230,7 +231,7 @@ namespace Pickles_Playlist_Editor
             }
         }
 
-        private async void PlaylistTreeView_Tapped(object sender, TappedRoutedEventArgs e)
+        private void PlaylistTreeView_Tapped(object sender, TappedRoutedEventArgs e)
         {
             if (_busyOverlayVisible) return;
 
@@ -242,22 +243,26 @@ namespace Pickles_Playlist_Editor
                 return;
 
             var now = DateTimeOffset.Now;
-            var elapsedMs = (now - _lastTreeTapTime).TotalMilliseconds;
-            var renameDelayMs = GetDoubleClickTime();
-
-            bool isSameNode = _lastTreeTappedNode == content;
-            bool canTriggerRename = isSameNode && elapsedMs >= renameDelayMs;
-
+            bool isSecondClick = _lastTreeTappedNode == content && (now - _lastTreeTapTime).TotalMilliseconds <= 700;
             _lastTreeTappedNode = content;
             _lastTreeTapTime = now;
 
-            if (!canTriggerRename)
+            if (isSecondClick)
+            {
+                _pendingRenameNode = content;
+                _ = BeginRenameFromPendingAsync();
+            }
+        }
+
+        private async Task BeginRenameFromPendingAsync()
+        {
+            await Task.Delay(250);
+            var node = _pendingRenameNode;
+            _pendingRenameNode = null;
+            if (node == null || !PlaylistTreeView.SelectedItems.Contains(node))
                 return;
 
-            if (!PlaylistTreeView.SelectedItems.Contains(content))
-                return;
-
-            await RenameNodeAsync(content);
+            await RenameNodeAsync(node);
         }
 
         private async Task RenameNodeAsync(PlaylistNodeContent node)
