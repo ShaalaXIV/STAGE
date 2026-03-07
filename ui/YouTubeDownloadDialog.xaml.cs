@@ -21,7 +21,11 @@ namespace Pickles_Playlist_Editor
     {
         public YouTubeDownloadResult? DownloadResult { get; private set; }
 
-        public YouTubeDownloadDialog(string? preferredPlaylistName = null)
+        public YouTubeDownloadDialog() : this(null)
+        {
+        }
+
+        public YouTubeDownloadDialog(string? preferredPlaylistName)
         {
             this.InitializeComponent();
             LoadTargetPlaylists(preferredPlaylistName);
@@ -46,6 +50,9 @@ namespace Pickles_Playlist_Editor
 
         private void UpdateTargetPlaylistState()
         {
+            if (TargetPlaylistComboBox == null || ModeComboBox == null)
+                return;
+
             // Playlist mode always creates a brand-new playlist, so selecting a target is disabled.
             TargetPlaylistComboBox.IsEnabled = ModeComboBox.SelectedIndex != 1;
         }
