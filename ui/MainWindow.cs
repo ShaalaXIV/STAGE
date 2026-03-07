@@ -21,17 +21,11 @@ namespace Pickles_Playlist_Editor
 
         private PlaylistNodeContent? _contextMenuNode;
         private PlaylistNodeContent? _selectedNode;
-        private PlaylistNodeContent? _pendingRenameNode;
-        private DateTimeOffset _lastTreeTapTime;
-        private PlaylistNodeContent? _lastTreeTappedNode;
 
         private readonly MenuFlyout _treeContextMenu;
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, uint attr, ref int attrValue, int attrSize);
-
-        [DllImport("user32.dll")]
-        private static extern uint GetDoubleClickTime();
 
         private const uint DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
 
@@ -242,24 +236,18 @@ namespace Pickles_Playlist_Editor
             if (content == null || content.Level < 1)
                 return;
 
-            var now = DateTimeOffset.Now;
-            bool isSecondClick = _lastTreeTappedNode == content && (now - _lastTreeTapTime).TotalMilliseconds <= 700;
-            _lastTreeTappedNode = content;
-            _lastTreeTapTime = now;
-
-            if (isSecondClick)
-            {
-                _pendingRenameNode = content;
-                _ = BeginRenameFromPendingAsync();
-            }
+            _selectedNode = content;
         }
 
-        private async Task BeginRenameFromPendingAsync()
+        private async void PlaylistTreeView_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
         {
-            await Task.Delay(250);
-            var node = _pendingRenameNode;
-            _pendingRenameNode = null;
-            if (node == null || !PlaylistTreeView.SelectedItems.Contains(node))
+            if (_busyOverlayVisible) return;
+
+            if (e.OriginalSource is not FrameworkElement fe)
+                return;
+
+            var node = FindNodeContentFromElement(fe);
+            if (node == null || (node.Level != 1 && node.Level != 2))
                 return;
 
             await RenameNodeAsync(node);

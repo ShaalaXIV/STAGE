@@ -24,10 +24,11 @@ namespace Pickles_Playlist_Editor
             increase.Click += IncreaseVolumeMenuItem_Click;
             var rename = new MenuFlyoutItem { Text = AppStrings.Menu_Rename };
             rename.Click += RenameMenuItem_Click;
+            flyout.Items.Add(rename);
+            flyout.Items.Add(new MenuFlyoutSeparator());
             flyout.Items.Add(extract);
             flyout.Items.Add(normalize);
             flyout.Items.Add(increase);
-            flyout.Items.Add(rename);
             flyout.Items.Add(new MenuFlyoutSeparator());
             var eq = new MenuFlyoutItem { Text = AppStrings.Menu_ManageEQ };
             eq.Click += ApplyEqSettingsMenuItem_Click;
