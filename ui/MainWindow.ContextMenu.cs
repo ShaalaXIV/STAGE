@@ -16,12 +16,16 @@ namespace Pickles_Playlist_Editor
         private MenuFlyout BuildContextMenu()
         {
             var flyout = new MenuFlyout();
+            var renameMenuItem = new MenuFlyoutItem { Text = AppStrings.Menu_Rename };
+            renameMenuItem.Click += RenameMenuItem_Click;
             var extract = new MenuFlyoutItem { Text = AppStrings.Menu_ExtractAudio };
             extract.Click += ExtractAudioMenuItem_Click;
             var normalize = new MenuFlyoutItem { Text = AppStrings.Menu_NormalizeAudio };
             normalize.Click += NormalizeAudioMenuItem_Click;
             var increase = new MenuFlyoutItem { Text = AppStrings.Menu_IncreaseVolume };
             increase.Click += IncreaseVolumeMenuItem_Click;
+            flyout.Items.Add(renameMenuItem);
+            flyout.Items.Add(new MenuFlyoutSeparator());
             flyout.Items.Add(extract);
             flyout.Items.Add(normalize);
             flyout.Items.Add(increase);
@@ -30,6 +34,15 @@ namespace Pickles_Playlist_Editor
             eq.Click += ApplyEqSettingsMenuItem_Click;
             flyout.Items.Add(eq);
             return flyout;
+        }
+
+        private async void RenameMenuItem_Click(object sender, object e)
+        {
+            var node = _contextMenuNode;
+            if (node == null || (node.Level != 1 && node.Level != 2))
+                return;
+
+            await RenameNodeAsync(node);
         }
 
         private async void ExtractAudioMenuItem_Click(object sender, object e)
