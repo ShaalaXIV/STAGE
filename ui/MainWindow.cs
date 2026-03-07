@@ -247,10 +247,17 @@ namespace Pickles_Playlist_Editor
                 return;
 
             var node = FindNodeContentFromElement(fe);
-            if (node == null || (node.Level != 1 && node.Level != 2))
+            if (node == null || node.Level != 2)
                 return;
 
-            await RenameNodeAsync(node);
+            _selectedNode = node;
+
+            if (node.Parent == null || !Playlists.TryGetValue(node.Parent.Name, out var playlist))
+                return;
+
+            var option = playlist.Options.FirstOrDefault(x => string.Equals(x.Name, node.Name, StringComparison.Ordinal));
+            if (option != null)
+                PlayOption(option);
         }
 
         private async Task RenameNodeAsync(PlaylistNodeContent node)
