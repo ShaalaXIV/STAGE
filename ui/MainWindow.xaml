@@ -95,6 +95,7 @@
             DragItemsCompleted="PlaylistTreeView_DragItemsCompleted"
             DragOver="PlaylistTreeView_DragOver"
             Drop="PlaylistTreeView_Drop"
+            Tapped="PlaylistTreeView_Tapped"
             RightTapped="PlaylistTreeView_RightTapped"
             SelectionChanged="PlaylistTreeView_SelectionChanged"
             Loaded="PlaylistTreeView_Loaded">
