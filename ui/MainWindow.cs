@@ -9,6 +9,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.IO;
+using System;
 using Windows.Storage.Pickers;
 
 namespace Pickles_Playlist_Editor
@@ -33,21 +34,8 @@ namespace Pickles_Playlist_Editor
         {
             this.InitializeComponent();
 
-            // Apply system dark/light theme — WinUI 3 doesn't do this automatically
-            var uiSettings = new Windows.UI.ViewManagement.UISettings();
-            var bg = uiSettings.GetColorValue(Windows.UI.ViewManagement.UIColorType.Background);
-            bool isDark = bg.R < 128;
-
-            // Set content theme (controls)
-            if (this.Content is FrameworkElement root)
-                root.RequestedTheme = isDark ? ElementTheme.Dark : ElementTheme.Light;
-
-            // Tell DWM to render the title bar in dark/light mode
-            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-            int darkMode = isDark ? 1 : 0;
-            DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkMode, sizeof(int));
-
-            this.AppWindow.SetIcon("pickle.ico");
+            ApplySystemThemeSafely();
+            SetWindowIconSafely();
             this.Title = "Pickles Playlist Editor";
 
             _treeContextMenu = BuildContextMenu();
@@ -61,6 +49,46 @@ namespace Pickles_Playlist_Editor
                 var size = this.AppWindow.Size;
                 Settings.WindowSize = (size.Width, size.Height);
             };
+        }
+
+        private void ApplySystemThemeSafely()
+        {
+            try
+            {
+                // Apply system dark/light theme — WinUI 3 doesn't do this automatically
+                var uiSettings = new Windows.UI.ViewManagement.UISettings();
+                var bg = uiSettings.GetColorValue(Windows.UI.ViewManagement.UIColorType.Background);
+                bool isDark = bg.R < 128;
+
+                // Set content theme (controls)
+                if (this.Content is FrameworkElement root)
+                    root.RequestedTheme = isDark ? ElementTheme.Dark : ElementTheme.Light;
+
+                // Tell DWM to render the title bar in dark/light mode
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+                int darkMode = isDark ? 1 : 0;
+                _ = DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkMode, sizeof(int));
+            }
+            catch
+            {
+                // Keep startup resilient; this is visual polish only.
+            }
+        }
+
+        private void SetWindowIconSafely()
+        {
+            try
+            {
+                var iconPath = Path.Combine(AppContext.BaseDirectory, "pickle.ico");
+                if (File.Exists(iconPath))
+                {
+                    this.AppWindow.SetIcon(iconPath);
+                }
+            }
+            catch
+            {
+                // Keep startup resilient; failing to set icon should not crash app.
+            }
         }
 
         // ─── Dialog helper ───────────────────────────────────────────────────────
