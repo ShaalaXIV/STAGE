@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <RootNamespace>Pickles_Playlist_Editor</RootNamespace>
     <Nullable>enable</Nullable>
     <UseWinUI>true</UseWinUI>
