@@ -5,12 +5,24 @@ namespace Pickles_Playlist_Editor
     internal static class AppStrings
     {
         private static readonly ResourceLoader _r = new ResourceLoader();
+        private static string Get(string key, string fallback = "")
+        {
+            try
+            {
+                var value = _r.GetString(key);
+                return string.IsNullOrWhiteSpace(value) ? (string.IsNullOrWhiteSpace(fallback) ? key : fallback) : value;
+            }
+            catch
+            {
+                return string.IsNullOrWhiteSpace(fallback) ? key : fallback;
+            }
+        }
 
-        public static string Btn_Yes => _r.GetString("Btn_Yes");
-        public static string Btn_No => _r.GetString("Btn_No");
-        public static string Btn_Install => _r.GetString("Btn_Install");
-        public static string Btn_Later => _r.GetString("Btn_Later");
-        public static string Dlg_Error => _r.GetString("Dlg_Error");
+        public static string Btn_Yes => Get("Btn_Yes", "Yes");
+        public static string Btn_No => Get("Btn_No", "No");
+        public static string Btn_Install => Get("Btn_Install", "Install");
+        public static string Btn_Later => Get("Btn_Later", "Later");
+        public static string Dlg_Error => Get("Dlg_Error", "Error");
         public static string Dlg_NoPlaylist_Title => _r.GetString("Dlg_NoPlaylist_Title");
         public static string Dlg_NoPlaylist_Content => _r.GetString("Dlg_NoPlaylist_Content");
         public static string Dlg_BPMDetection_Title => _r.GetString("Dlg_BPMDetection_Title");
@@ -53,17 +65,17 @@ namespace Pickles_Playlist_Editor
         public static string Menu_Rename => _r.GetString("Menu_Rename");
         public static string Dlg_OrganizeLibrary_Title => _r.GetString("Dlg_OrganizeLibrary_Title");
         public static string Dlg_OrganizeLibrary_Content => _r.GetString("Dlg_OrganizeLibrary_Content");
-        public static string Menu_ManageEQ => _r.GetString("Menu_ManageEQ");
-        public static string Menu_ManageScdParameters => _r.GetString("Menu_ManageScdParameters");
+        public static string Menu_ManageEQ => Get("Menu_ManageEQ", "Manage EQ Settings");
+        public static string Menu_ManageScdParameters => Get("Menu_ManageScdParameters", "Manage SCD Parameters");
 
         public static string ErrorAddingSongs(string msg) => string.Format(_r.GetString("Dlg_ErrorAddingSongs"), msg);
         public static string ErrorDeletion(string msg) => string.Format(_r.GetString("Dlg_ErrorDeletion"), msg);
         public static string UpdateAvailableContent(string version) => string.Format(_r.GetString("Dlg_UpdateAvailable_Content"), version);
         public static string NormalizeConfirm(int count) => string.Format(_r.GetString("Dlg_NormalizeConfirm"), count);
         public static string ApplyEQConfirm(int count) => string.Format(_r.GetString("Dlg_ApplyEQConfirm"), count);
-        public static string ApplyScdParametersConfirm(int count) => string.Format(_r.GetString("Dlg_ApplyScdParametersConfirm"), count);
+        public static string ApplyScdParametersConfirm(int count) => string.Format(Get("Dlg_ApplyScdParametersConfirm", "Apply SCD parameters to {0} song(s)? This will overwrite existing SCD files."), count);
         public static string ApplyingEQ(int current, int total) => string.Format(_r.GetString("Prog_ApplyingEQ"), current, total);
-        public static string ApplyingScdParameters(int current, int total) => string.Format(_r.GetString("Prog_ApplyingScdParametersOne"), current, total);
+        public static string ApplyingScdParameters(int current, int total) => string.Format(Get("Prog_ApplyingScdParametersOne", "Applying SCD parameters ({0}/{1})"), current, total);
         public static string FileNotFoundContent(string path) => string.Format(_r.GetString("Dlg_FileNotFound_Content"), path);
         public static string ErrorFileDrop(string msg) => string.Format(_r.GetString("Dlg_ErrorFileDrop"), msg);
         public static string ErrorDragDrop(string msg) => string.Format(_r.GetString("Dlg_ErrorDragDrop"), msg);
