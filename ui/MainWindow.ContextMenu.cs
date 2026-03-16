@@ -37,6 +37,10 @@ namespace Pickles_Playlist_Editor
             var scdParams = new MenuFlyoutItem { Text = AppStrings.Menu_ManageScdParameters };
             scdParams.Click += ApplyScdParametersMenuItem_Click;
             flyout.Items.Add(scdParams);
+
+            var repackageScd = new MenuFlyoutItem { Text = AppStrings.Menu_RepackageScdFromDefault };
+            repackageScd.Click += RepackageScdFromDefaultMenuItem_Click;
+            flyout.Items.Add(repackageScd);
             return flyout;
         }
 
@@ -149,6 +153,13 @@ namespace Pickles_Playlist_Editor
             await OpenScdParametersWorkflowAsync(node);
         }
 
+        private async void RepackageScdFromDefaultMenuItem_Click(object sender, object e)
+        {
+            var node = _contextMenuNode;
+            if (node == null) return;
+            await RepackageScdFromDefaultWorkflowAsync(node);
+        }
+
         private List<(Playlist playlist, Option option)> GetSongTargetsForNode(PlaylistNodeContent node)
         {
             var results = new List<(Playlist, Option)>();
@@ -193,6 +204,43 @@ namespace Pickles_Playlist_Editor
             if (result != ContentDialogResult.Primary) return;
 
             await ApplyScdParametersToTargetsAsync(targets, dialog.SelectedSettings);
+        }
+
+
+        private async Task RepackageScdFromDefaultWorkflowAsync(PlaylistNodeContent node)
+        {
+            var targets = GetSongTargetsForNode(node);
+            if (targets.Count == 0) { await ShowDialogAsync(AppStrings.Dlg_ScdParameters_Title, AppStrings.Dlg_NoSongs); return; }
+
+            var confirm = await ShowDialogAsync(AppStrings.Dlg_ApplyScdParameters_Title,
+                AppStrings.RepackageScdFromDefaultConfirm(targets.Count),
+                AppStrings.Btn_Yes, null, AppStrings.Btn_No);
+            if (confirm != ContentDialogResult.Primary) return;
+
+            SetProgressBarText(AppStrings.Prog_RepackagingScdFromDefault);
+            SetProgressBarPercent(0);
+            int updated = 0;
+            var errors = new List<string>();
+
+            await Task.Run(() =>
+            {
+                int total = targets.Count, current = 0;
+                foreach (var (playlist, option) in targets)
+                {
+                    current++;
+                    try
+                    {
+                        SetProgressBarText(AppStrings.RepackagingScdFromDefault(current, total));
+                        RepackageSongScdFromDefault(option);
+                        updated++;
+                    }
+                    catch (Exception ex) { errors.Add($"{playlist.Name}/{option.Name}: {ex.Message}"); }
+                    finally { SetProgressBarPercent((int)((updated + errors.Count) / (double)total * 100)); }
+                }
+            });
+
+            SetProgressBarPercent(100);
+            ShowOperationSummary(AppStrings.Summary_RepackageScdFromDefault, updated, targets.Count, errors);
         }
 
         private async Task ApplyScdParametersToTargetsAsync(List<(Playlist playlist, Option option)> targets, ScdParameterSettings settings)
@@ -302,6 +350,24 @@ namespace Pickles_Playlist_Editor
             finally { if (Directory.Exists(tempRoot)) Directory.Delete(tempRoot, true); }
         }
 
+
+
+        private static void RepackageSongScdFromDefault(Option option)
+        {
+            string fullScdPath = Path.Combine(Settings.PenumbraLocation, Settings.ModName, Playlist.GetScdPath(option));
+            if (!File.Exists(fullScdPath)) throw new FileNotFoundException("SCD not found.", fullScdPath);
+            string tempRoot = Path.Combine(Path.GetTempPath(), "pickles-repackage-default-scd", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempRoot);
+            string ogg = Path.Combine(tempRoot, "source.ogg");
+            try
+            {
+                ScdOggExtractor.ExtractOgg(fullScdPath, ogg);
+                var repackaged = ScdFile.Import(ogg);
+                using var w = new BinaryWriter(new FileStream(fullScdPath, FileMode.Create, FileAccess.Write, FileShare.None));
+                repackaged.Write(w);
+            }
+            finally { if (Directory.Exists(tempRoot)) Directory.Delete(tempRoot, true); }
+        }
 
         private static void ApplyScdParametersToSong(Option option, ScdParameterSettings settings)
         {

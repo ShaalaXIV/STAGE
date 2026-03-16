@@ -10,6 +10,7 @@ namespace Pickles_Playlist_Editor
         public int BusDuckingNumber { get; set; }
         public int AttributeVersion { get; set; }
         public int AttributeConditionFirst { get; set; }
+        public bool LoopEnabled { get; set; }
 
         public static ScdParameterSettings FromScd(ScdFile scd)
         {
@@ -21,6 +22,7 @@ namespace Pickles_Playlist_Editor
                 BusDuckingNumber = scd.Sounds.Count > 0 ? scd.Sounds[0].BusDucking.Number.Value : 1,
                 AttributeVersion = scd.Attributes.Count > 0 ? scd.Attributes[0].Version.Value : 1,
                 AttributeConditionFirst = scd.Attributes.Count > 0 ? scd.Attributes[0].ConditionFirst.Value : 0,
+                LoopEnabled = scd.Sounds.Count > 0 && scd.Sounds[0].Attributes.Value.HasFlag(VfxEditor.ScdFormat.SoundAttribute.Loop),
             };
         }
 
@@ -32,6 +34,11 @@ namespace Pickles_Playlist_Editor
                 scd.Sounds[0].BusDucking.FadeTime.Value = BusDuckingFadeTime;
                 scd.Sounds[0].BusDucking.Volume.Value = BusDuckingVolume;
                 scd.Sounds[0].BusDucking.Number.Value = (byte)System.Math.Clamp(BusDuckingNumber, byte.MinValue, byte.MaxValue);
+
+                if (LoopEnabled)
+                    scd.Sounds[0].Attributes.Value |= VfxEditor.ScdFormat.SoundAttribute.Loop;
+                else
+                    scd.Sounds[0].Attributes.Value &= ~VfxEditor.ScdFormat.SoundAttribute.Loop;
             }
 
             if (scd.Attributes.Count > 0)

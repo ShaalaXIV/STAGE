@@ -46,6 +46,7 @@ namespace Pickles_Playlist_Editor
         public static string Dlg_ApplyScdParameters_Title => Get("Dlg_ApplyScdParameters_Title");
         public static string Summary_ApplyEQ => Get("Summary_ApplyEQ");
         public static string Summary_ApplyScdParameters => Get("Summary_ApplyScdParameters");
+        public static string Summary_RepackageScdFromDefault => Get("Summary_RepackageScdFromDefault", "Repackaged with default.scd");
         public static string Prog_ImportingSongs => Get("Prog_ImportingSongs");
         public static string Prog_ComputingDurations => Get("Prog_ComputingDurations");
         public static string Dlg_FileNotFound_Title => Get("Dlg_FileNotFound_Title");
@@ -59,6 +60,7 @@ namespace Pickles_Playlist_Editor
         public static string Prog_IncreasingVolume => Get("Prog_IncreasingVolume");
         public static string Prog_ApplyingEQSettings => Get("Prog_ApplyingEQSettings");
         public static string Prog_ApplyingScdParameters => Get("Prog_ApplyingScdParameters");
+        public static string Prog_RepackagingScdFromDefault => Get("Prog_RepackagingScdFromDefault", "Repackaging SCDs from default.scd");
         public static string Menu_ExtractAudio => Get("Menu_ExtractAudio");
         public static string Menu_NormalizeAudio => Get("Menu_NormalizeAudio");
         public static string Menu_IncreaseVolume => Get("Menu_IncreaseVolume");
@@ -66,7 +68,8 @@ namespace Pickles_Playlist_Editor
         public static string Dlg_OrganizeLibrary_Title => Get("Dlg_OrganizeLibrary_Title");
         public static string Dlg_OrganizeLibrary_Content => Get("Dlg_OrganizeLibrary_Content");
         public static string Menu_ManageEQ => Get("Menu_ManageEQ", "Manage EQ Settings");
-        public static string Menu_ManageScdParameters => Get("Menu_ManageScdParameters", "Manage SCD Parameters");
+        public static string Menu_ManageScdParameters => Get("Menu_ManageScdParameters", "Edit SCD Playback Parameters (Volume, Ducking, Attributes, Loop)");
+        public static string Menu_RepackageScdFromDefault => Get("Menu_RepackageScdFromDefault", "Repackage Song(s) Using Current default.scd");
 
         public static string ErrorAddingSongs(string msg) => string.Format(Get("Dlg_ErrorAddingSongs"), msg);
         public static string ErrorDeletion(string msg) => string.Format(Get("Dlg_ErrorDeletion"), msg);
@@ -74,8 +77,10 @@ namespace Pickles_Playlist_Editor
         public static string NormalizeConfirm(int count) => string.Format(Get("Dlg_NormalizeConfirm"), count);
         public static string ApplyEQConfirm(int count) => string.Format(Get("Dlg_ApplyEQConfirm"), count);
         public static string ApplyScdParametersConfirm(int count) => string.Format(Get("Dlg_ApplyScdParametersConfirm", "Apply SCD parameters to {0} song(s)? This will overwrite existing SCD files."), count);
+        public static string RepackageScdFromDefaultConfirm(int count) => string.Format(Get("Dlg_RepackageScdFromDefaultConfirm", "Repackage {0} song(s) using the current default.scd settings? This rewrites each SCD while preserving the current audio."), count);
         public static string ApplyingEQ(int current, int total) => string.Format(Get("Prog_ApplyingEQ"), current, total);
         public static string ApplyingScdParameters(int current, int total) => string.Format(Get("Prog_ApplyingScdParametersOne", "Applying SCD parameters ({0}/{1})"), current, total);
+        public static string RepackagingScdFromDefault(int current, int total) => string.Format(Get("Prog_RepackagingScdFromDefaultOne", "Repackaging SCDs from default.scd ({0}/{1})"), current, total);
         public static string FileNotFoundContent(string path) => string.Format(Get("Dlg_FileNotFound_Content"), path);
         public static string ErrorFileDrop(string msg) => string.Format(Get("Dlg_ErrorFileDrop"), msg);
         public static string ErrorDragDrop(string msg) => string.Format(Get("Dlg_ErrorDragDrop"), msg);
