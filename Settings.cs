@@ -234,29 +234,16 @@ namespace Pickles_Playlist_Editor
             }
         }
 
-        /// <summary>
-        /// Volume percentage applied to SCD output (1–100).
-        /// Default: 100.
-        /// </summary>
-        public static int ScdVolumePercentage
+        public static string DefaultScdTemplateSourcePath
         {
-            get
-            {
-                try
-                {
-                    var value = Registry.CurrentUser.OpenSubKey(s_subKey)?.GetValue("ScdVolumePercentage", 100);
-                    if (value is int iv && iv >= 1 && iv <= 100) return iv;
-                    if (value is long lv && lv >= 1 && lv <= 100) return (int)lv;
-                    if (value is string sv && int.TryParse(sv, out var parsed) && parsed >= 1 && parsed <= 100) return parsed;
-                }
-                catch { }
-                return 100;
-            }
+            get => (string)Registry.CurrentUser.OpenSubKey(s_subKey)?.GetValue("DefaultScdTemplateSourcePath", string.Empty) ?? string.Empty;
             set
             {
-                int clamped = Math.Clamp(value, 1, 100);
                 using var key = Registry.CurrentUser.CreateSubKey(s_subKey);
-                key?.SetValue("ScdVolumePercentage", clamped, RegistryValueKind.DWord);
+                if (string.IsNullOrWhiteSpace(value))
+                    key?.DeleteValue("DefaultScdTemplateSourcePath", throwOnMissingValue: false);
+                else
+                    key?.SetValue("DefaultScdTemplateSourcePath", value.Trim());
             }
         }
 

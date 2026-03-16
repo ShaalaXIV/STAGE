@@ -43,7 +43,8 @@
   <data name="BrowseBaselineScdButton.Content" xml:space="preserve"><value>Browse</value></data>
   <data name="BackgroundImageLabel.Text" xml:space="preserve"><value>Background Image</value></data>
   <data name="BrowseBackgroundButton.Content" xml:space="preserve"><value>Browse</value></data>
-  <data name="ScdVolumePercentageLabel.Text" xml:space="preserve"><value>SCD Volume Percentage</value></data>
+  <data name="DefaultScdTemplateLabel.Text" xml:space="preserve"><value>Default SCD template file</value></data>
+  <data name="BrowseDefaultScdTemplateButton.Content" xml:space="preserve"><value>Browse</value></data>
 <data name="NormalizeVolumeCheckBox.Content" xml:space="preserve"><value>Normalize Volume</value></data>
   <data name="AutoReloadCheckBox.Content" xml:space="preserve"><value>Auto Reload Mod</value></data>
   <data name="OrganizeLibraryButton.Content" xml:space="preserve"><value>Organize Library</value></data>
@@ -85,6 +86,11 @@
   <data name="Dlg_ApplyEQ_Title" xml:space="preserve"><value>Apply EQ Settings</value></data>
   <data name="Dlg_ApplyEQConfirm" xml:space="preserve"><value>Apply EQ to {0} song(s)? This will overwrite existing SCD files.</value></data>
   <data name="Summary_ApplyEQ" xml:space="preserve"><value>Apply EQ settings finished</value></data>
+  <data name="Dlg_ScdParameters_Title" xml:space="preserve"><value>SCD Parameters</value></data>
+  <data name="Dlg_ApplyScdParameters_Title" xml:space="preserve"><value>Apply SCD Parameters</value></data>
+  <data name="Dlg_ApplyScdParametersConfirm" xml:space="preserve"><value>Apply SCD parameters to {0} song(s)? This will overwrite existing SCD files.</value></data>
+  <data name="Summary_ApplyScdParameters" xml:space="preserve"><value>Apply SCD parameters finished</value></data>
+  <data name="Prog_ApplyingScdParametersOne" xml:space="preserve"><value>Applying SCD parameters ({0}/{1})</value></data>
   <data name="Prog_ApplyingEQ" xml:space="preserve"><value>Applying EQ ({0}/{1})</value></data>
   <data name="Prog_ImportingSongs" xml:space="preserve"><value>Importing songs...</value></data>
   <data name="Prog_ComputingDurations" xml:space="preserve"><value>Computing song durations and BPM...</value></data>
@@ -104,6 +110,7 @@
   <data name="Menu_NormalizeAudio" xml:space="preserve"><value>Normalize Audio</value></data>
   <data name="Menu_IncreaseVolume" xml:space="preserve"><value>Increase Volume</value></data>
   <data name="Menu_ManageEQ" xml:space="preserve"><value>Manage EQ Settings</value></data>
+  <data name="Menu_ManageScdParameters" xml:space="preserve"><value>Manage SCD Parameters</value></data>
   <data name="Dlg_ErrorLoadingSong" xml:space="preserve"><value>Error loading song {0} in playlist {1}: {2}</value></data>
   <data name="Dlg_ErrorLoadingPlaylists" xml:space="preserve"><value>Error loading playlists: {0}</value></data>
   <data name="Dlg_Processed" xml:space="preserve"><value>Processed {0}/{1} song(s).</value></data>
@@ -113,6 +120,7 @@
   <data name="Prog_NormalizingAudio" xml:space="preserve"><value>Normalizing audio...</value></data>
   <data name="Prog_IncreasingVolume" xml:space="preserve"><value>Increasing volume...</value></data>
   <data name="Prog_ApplyingEQSettings" xml:space="preserve"><value>Applying EQ settings...</value></data>
+  <data name="Prog_ApplyingScdParameters" xml:space="preserve"><value>Applying SCD parameters...</value></data>
   <data name="Menu_Rename" xml:space="preserve"><value>Rename</value></data>
   <data name="Dlg_OrganizeLibrary_Title" xml:space="preserve"><value>Warning</value></data>
   <data name="Dlg_OrganizeLibrary_Content" xml:space="preserve"><value>This will rename all of your scd files and put them in folders named after your playlists. Backup your mod before continuing!</value></data>

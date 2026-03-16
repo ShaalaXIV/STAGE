@@ -182,18 +182,11 @@ namespace VfxEditor.ScdFormat {
                 {
                     file.Audio.Clear();
                     file.Audio.Add(newEntry);
-                    file.Attributes[0].Version.Value = 1;
-                    file.Attributes[0].ConditionFirst.Value = 0;
                 }
                 else
                 {
                     throw new Exception("couldn't import ogg for " + path);
                 }
-
-                file.Sounds[0].Volume.Value = Pickles_Playlist_Editor.Settings.ScdVolumePercentage / 100f;
-                file.Sounds[0].BusDucking.FadeTime.Value = 1200;
-                file.Sounds[0].BusDucking.Volume.Value = 0f;
-                file.Sounds[0].BusDucking.Number.Value = 1;
                 return file;
 
             }

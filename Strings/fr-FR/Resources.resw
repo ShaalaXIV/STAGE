@@ -43,6 +43,8 @@
   <data name="BrowseBaselineScdButton.Content" xml:space="preserve"><value>Parcourir</value></data>
   <data name="BackgroundImageLabel.Text" xml:space="preserve"><value>Image d'arrière-plan</value></data>
   <data name="BrowseBackgroundButton.Content" xml:space="preserve"><value>Parcourir</value></data>
+  <data name="DefaultScdTemplateLabel.Text" xml:space="preserve"><value>Default SCD template file</value></data>
+  <data name="BrowseDefaultScdTemplateButton.Content" xml:space="preserve"><value>Browse</value></data>
   <data name="ScdVolumePercentageLabel.Text" xml:space="preserve"><value>Pourcentage de volume SCD</value></data>
 <data name="NormalizeVolumeCheckBox.Content" xml:space="preserve"><value>Normaliser le volume</value></data>
   <data name="AutoReloadCheckBox.Content" xml:space="preserve"><value>Recharger le mod automatiquement</value></data>
@@ -84,6 +86,7 @@
   <data name="Dlg_ApplyEQ_Title" xml:space="preserve"><value>Appliquer les paramètres EQ</value></data>
   <data name="Dlg_ApplyEQConfirm" xml:space="preserve"><value>Appliquer l'EQ à {0} chanson(s) ? Les fichiers SCD existants seront écrasés.</value></data>
   <data name="Summary_ApplyEQ" xml:space="preserve"><value>Paramètres EQ appliqués</value></data>
+  <data name="Prog_ApplyingScdParametersOne" xml:space="preserve"><value>Applying SCD parameters ({0}/{1})</value></data>
   <data name="Prog_ApplyingEQ" xml:space="preserve"><value>Application EQ ({0}/{1})</value></data>
   <data name="Prog_ImportingSongs" xml:space="preserve"><value>Importation des chansons...</value></data>
   <data name="Prog_ComputingDurations" xml:space="preserve"><value>Calcul des durées et BPM...</value></data>
@@ -111,6 +114,8 @@
   <data name="Prog_ExtractingAudio" xml:space="preserve"><value>Extraction audio...</value></data>
   <data name="Prog_NormalizingAudio" xml:space="preserve"><value>Normalisation audio...</value></data>
   <data name="Prog_IncreasingVolume" xml:space="preserve"><value>Augmentation du volume...</value></data>
+  <data name="Menu_ManageScdParameters" xml:space="preserve"><value>Manage SCD Parameters</value></data>
+  <data name="Prog_ApplyingScdParameters" xml:space="preserve"><value>Applying SCD parameters...</value></data>
   <data name="Prog_ApplyingEQSettings" xml:space="preserve"><value>Application des paramètres EQ...</value></data>
   <data name="Menu_Rename" xml:space="preserve"><value>Renommer</value></data>
   <data name="Dlg_OrganizeLibrary_Title" xml:space="preserve"><value>Avertissement</value></data>

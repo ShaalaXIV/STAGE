@@ -43,8 +43,15 @@
             <Button x:Uid="BrowseBackgroundButton" Grid.Column="1" Content="Browse" Click="BrowseBackgroundButton_Click"/>
         </Grid>
 
-        <TextBlock x:Uid="ScdVolumePercentageLabel" Text="SCD Volume Percentage" FontWeight="SemiBold"/>
-        <NumberBox x:Name="ScdVolumePercentageBox" Minimum="1" Maximum="100" SpinButtonPlacementMode="Inline" SmallChange="1"/>
+        <TextBlock x:Uid="DefaultScdTemplateLabel" Text="Default SCD template file" FontWeight="SemiBold"/>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="DefaultScdTemplateTextBox" Grid.Column="0" Margin="0,0,4,0"/>
+            <Button x:Uid="BrowseDefaultScdTemplateButton" Grid.Column="1" Content="Browse" Click="BrowseDefaultScdTemplateButton_Click"/>
+        </Grid>
 
 <CheckBox x:Name="NormalizeVolumeCheckBox" x:Uid="NormalizeVolumeCheckBox" Content="Normalize Volume"/>
         <CheckBox x:Name="AutoReloadCheckBox" x:Uid="AutoReloadCheckBox" Content="Auto Reload Mod" IsChecked="True"/>

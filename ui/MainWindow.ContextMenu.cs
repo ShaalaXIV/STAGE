@@ -33,6 +33,10 @@ namespace Pickles_Playlist_Editor
             var eq = new MenuFlyoutItem { Text = AppStrings.Menu_ManageEQ };
             eq.Click += ApplyEqSettingsMenuItem_Click;
             flyout.Items.Add(eq);
+
+            var scdParams = new MenuFlyoutItem { Text = AppStrings.Menu_ManageScdParameters };
+            scdParams.Click += ApplyScdParametersMenuItem_Click;
+            flyout.Items.Add(scdParams);
             return flyout;
         }
 
@@ -138,6 +142,13 @@ namespace Pickles_Playlist_Editor
             await OpenEqualizerWorkflowAsync(node);
         }
 
+        private async void ApplyScdParametersMenuItem_Click(object sender, object e)
+        {
+            var node = _contextMenuNode;
+            if (node == null) return;
+            await OpenScdParametersWorkflowAsync(node);
+        }
+
         private List<(Playlist playlist, Option option)> GetSongTargetsForNode(PlaylistNodeContent node)
         {
             var results = new List<(Playlist, Option)>();
@@ -166,6 +177,55 @@ namespace Pickles_Playlist_Editor
             var result = await dialog.ShowAsync();
             if (result != ContentDialogResult.Primary) return;
             await ApplyEqualizerSettingsToTargetsAsync(targets, dialog.SelectedSettings);
+        }
+
+
+        private async Task OpenScdParametersWorkflowAsync(PlaylistNodeContent node)
+        {
+            var targets = GetSongTargetsForNode(node);
+            if (targets.Count == 0) { await ShowDialogAsync(AppStrings.Dlg_ScdParameters_Title, AppStrings.Dlg_NoSongs); return; }
+
+            string previewPath = Path.Combine(Settings.PenumbraLocation, Settings.ModName, Playlist.GetScdPath(targets[0].option));
+            var initial = ScdParameterSettings.FromScd(ScdFile.Import(previewPath));
+
+            var dialog = new ScdParametersDialog(initial) { XamlRoot = this.Content.XamlRoot };
+            var result = await dialog.ShowAsync();
+            if (result != ContentDialogResult.Primary) return;
+
+            await ApplyScdParametersToTargetsAsync(targets, dialog.SelectedSettings);
+        }
+
+        private async Task ApplyScdParametersToTargetsAsync(List<(Playlist playlist, Option option)> targets, ScdParameterSettings settings)
+        {
+            var confirm = await ShowDialogAsync(AppStrings.Dlg_ApplyScdParameters_Title,
+                AppStrings.ApplyScdParametersConfirm(targets.Count),
+                AppStrings.Btn_Yes, null, AppStrings.Btn_No);
+            if (confirm != ContentDialogResult.Primary) return;
+
+            SetProgressBarText(AppStrings.Prog_ApplyingScdParameters);
+            SetProgressBarPercent(0);
+            int updated = 0;
+            var errors = new List<string>();
+
+            await Task.Run(() =>
+            {
+                int total = targets.Count, current = 0;
+                foreach (var (playlist, option) in targets)
+                {
+                    current++;
+                    try
+                    {
+                        SetProgressBarText(AppStrings.ApplyingScdParameters(current, total));
+                        ApplyScdParametersToSong(option, settings);
+                        updated++;
+                    }
+                    catch (Exception ex) { errors.Add($"{playlist.Name}/{option.Name}: {ex.Message}"); }
+                    finally { SetProgressBarPercent((int)((updated + errors.Count) / (double)total * 100)); }
+                }
+            });
+
+            SetProgressBarPercent(100);
+            ShowOperationSummary(AppStrings.Summary_ApplyScdParameters, updated, targets.Count, errors);
         }
 
         private async Task ApplyEqualizerSettingsToTargetsAsync(
@@ -240,6 +300,17 @@ namespace Pickles_Playlist_Editor
                 scd.Write(w);
             }
             finally { if (Directory.Exists(tempRoot)) Directory.Delete(tempRoot, true); }
+        }
+
+
+        private static void ApplyScdParametersToSong(Option option, ScdParameterSettings settings)
+        {
+            string fullScdPath = Path.Combine(Settings.PenumbraLocation, Settings.ModName, Playlist.GetScdPath(option));
+            if (!File.Exists(fullScdPath)) throw new FileNotFoundException("SCD not found.", fullScdPath);
+            var scd = ScdFile.Import(fullScdPath);
+            settings.ApplyTo(scd);
+            using var w = new BinaryWriter(new FileStream(fullScdPath, FileMode.Create, FileAccess.Write, FileShare.None));
+            scd.Write(w);
         }
 
         private static void ApplyEqualizerSettingsToSongAudio(Option option, string filterChain)
