@@ -17,6 +17,7 @@ namespace Pickles_Playlist_Editor
             BusDuckingVolumeBox.Value = initial.BusDuckingVolume;
             AttributeVersionBox.Value = initial.AttributeVersion;
             AttributeConditionFirstBox.Value = initial.AttributeConditionFirst;
+            LoopEnabledCheckBox.IsChecked = initial.LoopEnabled;
 
             PrimaryButtonClick += OnPrimaryButtonClick;
         }
@@ -29,6 +30,7 @@ namespace Pickles_Playlist_Editor
             SelectedSettings.BusDuckingVolume = (float)BusDuckingVolumeBox.Value;
             SelectedSettings.AttributeVersion = (int)AttributeVersionBox.Value;
             SelectedSettings.AttributeConditionFirst = (int)AttributeConditionFirstBox.Value;
+            SelectedSettings.LoopEnabled = LoopEnabledCheckBox.IsChecked == true;
         }
     }
 }
