@@ -17,7 +17,7 @@ namespace Pickles_Playlist_Editor
                 Settings.ModName ?? string.Empty);
             BaselineScdTextBox.Text = Settings.BaselineScdKey;
             BackgroundImageTextBox.Text = Settings.BackgroundImagePath;
-            ScdVolumePercentageBox.Value = Settings.ScdVolumePercentage;
+            DefaultScdTemplateTextBox.Text = Settings.DefaultScdTemplateSourcePath;
             NormalizeVolumeCheckBox.IsChecked = Settings.NormalizeVolume;
             AutoReloadCheckBox.IsChecked = Settings.AutoReloadMod;
             ValidateFields();
@@ -98,6 +98,20 @@ namespace Pickles_Playlist_Editor
                 BackgroundImageTextBox.Text = file.Path;
         }
 
+        private async void BrowseDefaultScdTemplateButton_Click(object sender, RoutedEventArgs e)
+        {
+            var picker = new Windows.Storage.Pickers.FileOpenPicker
+            {
+                ViewMode = Windows.Storage.Pickers.PickerViewMode.List
+            };
+            picker.FileTypeFilter.Add(".scd");
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+            var file = await picker.PickSingleFileAsync();
+            if (file != null)
+                DefaultScdTemplateTextBox.Text = file.Path;
+        }
+
         private void DirectoryPathTextBox_TextChanged(object sender, TextChangedEventArgs e) => ValidateFields();
 
         private void BaselineScdTextBox_TextChanged(object sender, TextChangedEventArgs e) => ValidateFields();
@@ -113,9 +127,15 @@ namespace Pickles_Playlist_Editor
             Settings.PenumbraLocation = penLocation;
             Settings.BaselineScdKey = BaselineScdTextBox.Text;
             Settings.BackgroundImagePath = BackgroundImageTextBox.Text.Trim();
-            Settings.ScdVolumePercentage = (int)ScdVolumePercentageBox.Value;
+            Settings.DefaultScdTemplateSourcePath = DefaultScdTemplateTextBox.Text.Trim();
             Settings.NormalizeVolume = NormalizeVolumeCheckBox.IsChecked == true;
             Settings.AutoReloadMod = AutoReloadCheckBox.IsChecked == true;
+
+            if (!string.IsNullOrWhiteSpace(Settings.DefaultScdTemplateSourcePath) && File.Exists(Settings.DefaultScdTemplateSourcePath))
+            {
+                string targetDefaultScd = Path.Combine(Directory.GetCurrentDirectory(), "default.scd");
+                File.Copy(Settings.DefaultScdTemplateSourcePath, targetDefaultScd, overwrite: true);
+            }
         }
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]

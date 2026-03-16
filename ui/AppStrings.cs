@@ -30,7 +30,10 @@ namespace Pickles_Playlist_Editor
         public static string Summary_IncreaseVolume => _r.GetString("Summary_IncreaseVolume");
         public static string Dlg_Equalizer_Title => _r.GetString("Dlg_Equalizer_Title");
         public static string Dlg_ApplyEQ_Title => _r.GetString("Dlg_ApplyEQ_Title");
+        public static string Dlg_ScdParameters_Title => _r.GetString("Dlg_ScdParameters_Title");
+        public static string Dlg_ApplyScdParameters_Title => _r.GetString("Dlg_ApplyScdParameters_Title");
         public static string Summary_ApplyEQ => _r.GetString("Summary_ApplyEQ");
+        public static string Summary_ApplyScdParameters => _r.GetString("Summary_ApplyScdParameters");
         public static string Prog_ImportingSongs => _r.GetString("Prog_ImportingSongs");
         public static string Prog_ComputingDurations => _r.GetString("Prog_ComputingDurations");
         public static string Dlg_FileNotFound_Title => _r.GetString("Dlg_FileNotFound_Title");
@@ -43,6 +46,7 @@ namespace Pickles_Playlist_Editor
         public static string Prog_NormalizingAudio => _r.GetString("Prog_NormalizingAudio");
         public static string Prog_IncreasingVolume => _r.GetString("Prog_IncreasingVolume");
         public static string Prog_ApplyingEQSettings => _r.GetString("Prog_ApplyingEQSettings");
+        public static string Prog_ApplyingScdParameters => _r.GetString("Prog_ApplyingScdParameters");
         public static string Menu_ExtractAudio => _r.GetString("Menu_ExtractAudio");
         public static string Menu_NormalizeAudio => _r.GetString("Menu_NormalizeAudio");
         public static string Menu_IncreaseVolume => _r.GetString("Menu_IncreaseVolume");
@@ -50,13 +54,16 @@ namespace Pickles_Playlist_Editor
         public static string Dlg_OrganizeLibrary_Title => _r.GetString("Dlg_OrganizeLibrary_Title");
         public static string Dlg_OrganizeLibrary_Content => _r.GetString("Dlg_OrganizeLibrary_Content");
         public static string Menu_ManageEQ => _r.GetString("Menu_ManageEQ");
+        public static string Menu_ManageScdParameters => _r.GetString("Menu_ManageScdParameters");
 
         public static string ErrorAddingSongs(string msg) => string.Format(_r.GetString("Dlg_ErrorAddingSongs"), msg);
         public static string ErrorDeletion(string msg) => string.Format(_r.GetString("Dlg_ErrorDeletion"), msg);
         public static string UpdateAvailableContent(string version) => string.Format(_r.GetString("Dlg_UpdateAvailable_Content"), version);
         public static string NormalizeConfirm(int count) => string.Format(_r.GetString("Dlg_NormalizeConfirm"), count);
         public static string ApplyEQConfirm(int count) => string.Format(_r.GetString("Dlg_ApplyEQConfirm"), count);
+        public static string ApplyScdParametersConfirm(int count) => string.Format(_r.GetString("Dlg_ApplyScdParametersConfirm"), count);
         public static string ApplyingEQ(int current, int total) => string.Format(_r.GetString("Prog_ApplyingEQ"), current, total);
+        public static string ApplyingScdParameters(int current, int total) => string.Format(_r.GetString("Prog_ApplyingScdParametersOne"), current, total);
         public static string FileNotFoundContent(string path) => string.Format(_r.GetString("Dlg_FileNotFound_Content"), path);
         public static string ErrorFileDrop(string msg) => string.Format(_r.GetString("Dlg_ErrorFileDrop"), msg);
         public static string ErrorDragDrop(string msg) => string.Format(_r.GetString("Dlg_ErrorDragDrop"), msg);
