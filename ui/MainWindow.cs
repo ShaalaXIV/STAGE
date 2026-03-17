@@ -166,14 +166,33 @@ namespace Pickles_Playlist_Editor
             return null;
         }
 
-        private static PlaylistNodeContent? FindSongNode(PlaylistNodeContent playlistContent, string name)
+        private static PlaylistNodeContent? FindSongNode(PlaylistNodeContent playlistContent, string name, string? scdPath = null)
         {
             foreach (var child in playlistContent.Children)
             {
+                if (!string.IsNullOrWhiteSpace(scdPath) &&
+                    string.Equals(child.SongScdPath, scdPath, StringComparison.OrdinalIgnoreCase))
+                    return child;
+
                 if (child.Name == name) return child;
             }
             return null;
         }
+
+        private static bool SongMatchesNode(Option option, PlaylistNodeContent node)
+        {
+            if (option == null || node == null) return false;
+
+            string nodeScdPath = node.SongScdPath ?? string.Empty;
+            string optionScdPath = Playlist.GetScdPath(option) ?? string.Empty;
+            if (!string.IsNullOrEmpty(nodeScdPath) && !string.IsNullOrEmpty(optionScdPath))
+                return string.Equals(optionScdPath, nodeScdPath, StringComparison.OrdinalIgnoreCase);
+
+            return string.Equals(option.Name, node.Name, StringComparison.Ordinal);
+        }
+
+        private static Option? FindSongOption(Playlist playlist, PlaylistNodeContent songNode)
+            => playlist.Options.FirstOrDefault(x => SongMatchesNode(x, songNode));
 
         private void GetPlaylistFromTargetNode(PlaylistNodeContent? target, out Playlist? targetPlaylist)
         {
@@ -202,7 +221,6 @@ namespace Pickles_Playlist_Editor
             if (System.IO.File.Exists(picklePath))
                 BusyPickleImage.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(picklePath));
             LoadPlaylists();
-            _ = CheckForUpdatesAsync();
         }
 
         private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -283,7 +301,7 @@ namespace Pickles_Playlist_Editor
             if (node.Parent == null || !Playlists.TryGetValue(node.Parent.Name, out var playlist))
                 return;
 
-            var option = playlist.Options.FirstOrDefault(x => string.Equals(x.Name, node.Name, StringComparison.Ordinal));
+            var option = FindSongOption(playlist, node);
             if (option != null)
                 PlayOption(option);
         }
@@ -351,7 +369,7 @@ namespace Pickles_Playlist_Editor
             if (node.Parent == null || !Playlists.TryGetValue(node.Parent.Name, out var playlist))
                 return;
 
-            var song = playlist.Options.FirstOrDefault(x => string.Equals(x.Name, node.Name, StringComparison.Ordinal));
+            var song = FindSongOption(playlist, node);
             if (song == null)
                 return;
 
@@ -382,11 +400,12 @@ namespace Pickles_Playlist_Editor
             if (string.IsNullOrWhiteSpace(newName) || string.Equals(newName, currentName, StringComparison.Ordinal))
                 return;
 
+            string? songScdPath = Playlist.GetScdPath(song);
             song.Name = newName;
             playlist.Save();
             LoadPlaylistsAndExpand(playlist.Name);
             var parentNode = FindPlaylistNode(playlist.Name);
-            var renamedSong = parentNode == null ? null : FindSongNode(parentNode, newName);
+            var renamedSong = parentNode == null ? null : FindSongNode(parentNode, newName, songScdPath);
             if (renamedSong != null)
             {
                 PlaylistTreeView.SelectedItems.Clear();

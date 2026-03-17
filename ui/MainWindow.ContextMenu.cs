@@ -167,7 +167,7 @@ namespace Pickles_Playlist_Editor
             {
                 if (Playlists.TryGetValue(node.Parent.Name, out var pl))
                 {
-                    var opt = pl.Options.FirstOrDefault(x => x.Name == node.Name);
+                    var opt = FindSongOption(pl, node);
                     if (opt != null && !string.IsNullOrEmpty(Playlist.GetScdPath(opt)))
                         results.Add((pl, opt));
                 }

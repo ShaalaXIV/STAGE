@@ -84,7 +84,7 @@ namespace Pickles_Playlist_Editor
 
                 string oldPlaylistName = draggedContent.Parent.Name;
                 if (!Playlists.TryGetValue(oldPlaylistName, out var oldPlaylist)) return;
-                var song = oldPlaylist.Options.Find(x => x.Name == draggedContent.Name);
+                var song = FindSongOption(oldPlaylist, draggedContent);
                 if (song == null) return;
 
                 Playlist? targetPlaylist;
@@ -98,27 +98,63 @@ namespace Pickles_Playlist_Editor
                 else if (dropContent.Level == 2 && dropContent.Parent != null)
                 {
                     if (!Playlists.TryGetValue(dropContent.Parent.Name, out targetPlaylist)) return;
-                    var ts = targetPlaylist.Options.Find(x => x.Name == dropContent.Name);
+                    var ts = FindSongOption(targetPlaylist, dropContent);
                     insertIndex = ts != null ? targetPlaylist.Options.IndexOf(ts) + 1 : targetPlaylist.Options.Count;
                 }
                 else return;
 
-                oldPlaylist.Options.Remove(song);
-                oldPlaylist.Save();
+                int oldIndex = oldPlaylist.Options.IndexOf(song);
+
+                // Reorder inside the same playlist without mutating file paths.
+                if (ReferenceEquals(oldPlaylist, targetPlaylist))
+                {
+                    oldPlaylist.Options.RemoveAt(oldIndex);
+                    if (oldIndex < insertIndex) insertIndex--;
+                    oldPlaylist.Options.Insert(Math.Min(insertIndex, oldPlaylist.Options.Count), song);
+                    oldPlaylist.Save();
+
+                    dropContent.IsExpanded = true;
+                    RecomputePlaylistDurations();
+                    LoadPlaylists();
+                    return;
+                }
 
                 string oldPath = Playlist.GetScdPath(song);
                 int lastSlash = oldPath.LastIndexOf('\\');
                 string oldDir = Path.Combine(Settings.PenumbraLocation, Settings.ModName, oldPath[..lastSlash]);
                 string oldSongFile = oldPath[(lastSlash + 1)..];
                 var scdKey = Playlist.GetScdKey(song) ?? Settings.BaselineScdKey;
+                string originalSongPath = song.Files.TryGetValue(scdKey, out var prevPath) ? prevPath : oldPath;
                 song.Files[scdKey] = Path.Combine(targetPlaylist.Name, oldSongFile);
 
-                targetPlaylist.Options.Insert(Math.Min(insertIndex, targetPlaylist.Options.Count), song);
-                targetPlaylist.Save();
-
                 string newDir = Path.Combine(Settings.PenumbraLocation, Settings.ModName, targetPlaylist.Name);
-                Directory.CreateDirectory(newDir);
-                File.Move(Path.Combine(oldDir, oldSongFile), Path.Combine(newDir, oldSongFile));
+                string oldFilePath = Path.Combine(oldDir, oldSongFile);
+                string newFilePath = Path.Combine(newDir, oldSongFile);
+
+                oldPlaylist.Options.RemoveAt(oldIndex);
+                targetPlaylist.Options.Insert(Math.Min(insertIndex, targetPlaylist.Options.Count), song);
+
+                bool movedFile = false;
+                try
+                {
+                    Directory.CreateDirectory(newDir);
+                    File.Move(oldFilePath, newFilePath);
+                    movedFile = true;
+
+                    oldPlaylist.Save();
+                    targetPlaylist.Save();
+                }
+                catch
+                {
+                    targetPlaylist.Options.Remove(song);
+                    oldPlaylist.Options.Insert(Math.Min(oldIndex, oldPlaylist.Options.Count), song);
+                    song.Files[scdKey] = originalSongPath;
+
+                    if (movedFile && File.Exists(newFilePath) && !File.Exists(oldFilePath))
+                        File.Move(newFilePath, oldFilePath);
+
+                    throw;
+                }
 
                 dropContent.IsExpanded = true;
                 RecomputePlaylistDurations();
@@ -159,7 +195,10 @@ namespace Pickles_Playlist_Editor
             if (targetContent != null && targetContent.Level == 2 && targetContent.Parent != null)
             {
                 if (Playlists.TryGetValue(targetContent.Parent.Name, out var parentPl))
-                    insertIndex = parentPl.Options.FindIndex(o => o.Name == targetContent.Name) + 1;
+                {
+                    var targetSong = FindSongOption(parentPl, targetContent);
+                    insertIndex = targetSong != null ? parentPl.Options.IndexOf(targetSong) + 1 : -1;
+                }
             }
 
             await Task.Run(() =>
