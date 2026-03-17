@@ -19,6 +19,7 @@ namespace Pickles_Playlist_Editor
             AttributeVersionBox.Value = initial.AttributeVersion;
             AttributeConditionFirstBox.Value = initial.AttributeConditionFirst;
             LoopEnabledCheckBox.IsChecked = initial.LoopEnabled;
+            TrackLoopEnabledCheckBox.IsChecked = initial.TrackLoopEnabled;
 
             LayoutMinRangeBox.Value = initial.LayoutMinRange;
             LayoutMaxRangeBox.Value = initial.LayoutMaxRange;
@@ -52,6 +53,7 @@ namespace Pickles_Playlist_Editor
             SelectedSettings.AttributeVersion = (int)AttributeVersionBox.Value;
             SelectedSettings.AttributeConditionFirst = (int)AttributeConditionFirstBox.Value;
             SelectedSettings.LoopEnabled = LoopEnabledCheckBox.IsChecked == true;
+            SelectedSettings.TrackLoopEnabled = TrackLoopEnabledCheckBox.IsChecked == true;
 
             if (SelectedSettings.LayoutParametersAvailable)
             {

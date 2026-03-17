@@ -11,6 +11,7 @@ namespace Pickles_Playlist_Editor
         public int AttributeVersion { get; set; }
         public int AttributeConditionFirst { get; set; }
         public bool LoopEnabled { get; set; }
+        public bool TrackLoopEnabled { get; set; }
         public float LayoutMinRange { get; set; }
         public float LayoutMaxRange { get; set; }
         public float LayoutHeightLow { get; set; }
@@ -29,6 +30,7 @@ namespace Pickles_Playlist_Editor
                 AttributeVersion = scd.Attributes.Count > 0 ? scd.Attributes[0].Version.Value : 1,
                 AttributeConditionFirst = scd.Attributes.Count > 0 ? scd.Attributes[0].ConditionFirst.Value : 0,
                 LoopEnabled = scd.Sounds.Count > 0 && scd.Sounds[0].Attributes.Value.HasFlag(VfxEditor.ScdFormat.SoundAttribute.Loop),
+                TrackLoopEnabled = scd.Tracks.Count > 0 && scd.Tracks[0].Items.Count > 0 && scd.Tracks[0].Items[^1].Type.Value == TrackCmd.EndForLoop,
             };
 
             settings.ReadLayoutValues(scd);
@@ -54,6 +56,17 @@ namespace Pickles_Playlist_Editor
             {
                 scd.Attributes[0].Version.Value = (byte)System.Math.Clamp(AttributeVersion, byte.MinValue, byte.MaxValue);
                 scd.Attributes[0].ConditionFirst.Value = (byte)System.Math.Clamp(AttributeConditionFirst, byte.MinValue, byte.MaxValue);
+            }
+
+            if (scd.Tracks.Count > 0)
+            {
+                foreach (var track in scd.Tracks)
+                {
+                    if (track.Items.Count == 0) continue;
+                    var endItem = track.Items[^1];
+                    if (endItem.Type.Value != TrackCmd.End && endItem.Type.Value != TrackCmd.EndForLoop) continue;
+                    endItem.Type.Value = TrackLoopEnabled ? TrackCmd.EndForLoop : TrackCmd.End;
+                }
             }
 
             ApplyLayoutValues(scd);

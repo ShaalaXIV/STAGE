@@ -11,7 +11,7 @@
         <StackPanel Spacing="10" MinWidth="600">
             <TextBlock Text="Edit SCD playback parameters for the selected song(s). Values are preloaded from the currently selected SCD." TextWrapping="Wrap"/>
 
-            <TabView>
+            <TabView Height="620">
                 <TabViewItem Header="Bus Ducking" IsClosable="False">
                     <ScrollViewer MaxHeight="580">
                         <StackPanel Spacing="10" MinWidth="550">
@@ -41,29 +41,34 @@
 
                             <CheckBox x:Name="LoopEnabledCheckBox" Content="Loop Enabled"/>
                             <TextBlock Text="Controls whether the SCD sound is marked as looping via the Loop attribute flag." TextWrapping="Wrap" Opacity="0.75"/>
+
+                            <CheckBox x:Name="TrackLoopEnabledCheckBox" Content="Track Loop Enabled"/>
+                            <TextBlock Text="Controls whether track command lists end with EndForLoop (loops) or End (no loop)." TextWrapping="Wrap" Opacity="0.75"/>
                         </StackPanel>
                     </ScrollViewer>
                 </TabViewItem>
 
                 <TabViewItem Header="Layout" IsClosable="False">
-                    <StackPanel Spacing="10" MinWidth="550">
-                        <TextBlock x:Name="LayoutUnavailableText" Text="Layout range controls are unavailable for this SCD layout type." TextWrapping="Wrap" Opacity="0.75" Visibility="Collapsed"/>
+                    <ScrollViewer MaxHeight="580">
+                        <StackPanel Spacing="10" MinWidth="550">
+                            <TextBlock x:Name="LayoutUnavailableText" Text="Layout range controls are unavailable for this SCD layout type." TextWrapping="Wrap" Opacity="0.75" Visibility="Collapsed"/>
 
-                        <TextBlock Text="Min Range" FontWeight="SemiBold"/>
-                        <NumberBox x:Name="LayoutMinRangeBox" Minimum="-100000" Maximum="100000" SpinButtonPlacementMode="Inline" SmallChange="0.1"/>
+                            <TextBlock Text="Min Range" FontWeight="SemiBold"/>
+                            <NumberBox x:Name="LayoutMinRangeBox" Minimum="-100000" Maximum="100000" SpinButtonPlacementMode="Inline" SmallChange="0.1"/>
 
-                        <TextBlock Text="Max Range" FontWeight="SemiBold"/>
-                        <NumberBox x:Name="LayoutMaxRangeBox" Minimum="-100000" Maximum="100000" SpinButtonPlacementMode="Inline" SmallChange="0.1"/>
+                            <TextBlock Text="Max Range" FontWeight="SemiBold"/>
+                            <NumberBox x:Name="LayoutMaxRangeBox" Minimum="-100000" Maximum="100000" SpinButtonPlacementMode="Inline" SmallChange="0.1"/>
 
-                        <TextBlock Text="Height (Lower)" FontWeight="SemiBold"/>
-                        <NumberBox x:Name="LayoutHeightLowBox" Minimum="-100000" Maximum="100000" SpinButtonPlacementMode="Inline" SmallChange="0.1"/>
+                            <TextBlock Text="Height (Lower)" FontWeight="SemiBold"/>
+                            <NumberBox x:Name="LayoutHeightLowBox" Minimum="-100000" Maximum="100000" SpinButtonPlacementMode="Inline" SmallChange="0.1"/>
 
-                        <TextBlock Text="Height (Upper)" FontWeight="SemiBold"/>
-                        <NumberBox x:Name="LayoutHeightHighBox" Minimum="-100000" Maximum="100000" SpinButtonPlacementMode="Inline" SmallChange="0.1"/>
+                            <TextBlock Text="Height (Upper)" FontWeight="SemiBold"/>
+                            <NumberBox x:Name="LayoutHeightHighBox" Minimum="-100000" Maximum="100000" SpinButtonPlacementMode="Inline" SmallChange="0.1"/>
 
-                        <TextBlock Text="Range Volume" FontWeight="SemiBold"/>
-                        <NumberBox x:Name="LayoutRangeVolumeBox" Minimum="-1000" Maximum="1000" SpinButtonPlacementMode="Inline" SmallChange="0.05"/>
-                    </StackPanel>
+                            <TextBlock Text="Range Volume" FontWeight="SemiBold"/>
+                            <NumberBox x:Name="LayoutRangeVolumeBox" Minimum="-1000" Maximum="1000" SpinButtonPlacementMode="Inline" SmallChange="0.05"/>
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabViewItem>
             </TabView>
         </StackPanel>
