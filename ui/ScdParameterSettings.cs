@@ -133,37 +133,56 @@ namespace Pickles_Playlist_Editor
             switch (data)
             {
                 case LayoutPointData layout:
-                    Assign(layout.MaxRange.Value, layout.MinRange.Value, layout.Height.Value.X, layout.Height.Value.Y, layout.RangeVolume.Value);
+                    min = layout.MinRange.Value;
+                    max = layout.MaxRange.Value;
+                    heightLow = layout.Height.Value.X;
+                    heightHigh = layout.Height.Value.Y;
+                    rangeVolume = layout.RangeVolume.Value;
                     return true;
                 case LayoutPointDirData layout:
-                    Assign(layout.MaxRange.Value, layout.MinRange.Value, layout.Height.Value.X, layout.Height.Value.Y, layout.RangeVolume.Value);
+                    min = layout.MinRange.Value;
+                    max = layout.MaxRange.Value;
+                    heightLow = layout.Height.Value.X;
+                    heightHigh = layout.Height.Value.Y;
+                    rangeVolume = layout.RangeVolume.Value;
                     return true;
                 case LayoutLineData layout:
-                    Assign(layout.MaxRange.Value, layout.MinRange.Value, layout.Height.Value.X, layout.Height.Value.Y, layout.RangeVolume.Value);
+                    min = layout.MinRange.Value;
+                    max = layout.MaxRange.Value;
+                    heightLow = layout.Height.Value.X;
+                    heightHigh = layout.Height.Value.Y;
+                    rangeVolume = layout.RangeVolume.Value;
                     return true;
                 case LayoutPolylineData layout:
-                    Assign(layout.MaxRange.Value, layout.MinRange.Value, layout.Height.Value.X, layout.Height.Value.Y, layout.RangeVolume.Value);
+                    min = layout.MinRange.Value;
+                    max = layout.MaxRange.Value;
+                    heightLow = layout.Height.Value.X;
+                    heightHigh = layout.Height.Value.Y;
+                    rangeVolume = layout.RangeVolume.Value;
                     return true;
                 case LayoutPolygonData layout:
-                    Assign(layout.MaxRange.Value, layout.MinRange.Value, layout.Height.Value.X, layout.Height.Value.Y, layout.RangeVolume.Value);
+                    min = layout.MinRange.Value;
+                    max = layout.MaxRange.Value;
+                    heightLow = layout.Height.Value.X;
+                    heightHigh = layout.Height.Value.Y;
+                    rangeVolume = layout.RangeVolume.Value;
                     return true;
                 case LayoutLineExtControllerData layout:
-                    Assign(layout.MaxRange.Value, layout.MinRange.Value, layout.Height.Value.X, layout.Height.Value.Y, layout.RangeVolume.Value);
+                    min = layout.MinRange.Value;
+                    max = layout.MaxRange.Value;
+                    heightLow = layout.Height.Value.X;
+                    heightHigh = layout.Height.Value.Y;
+                    rangeVolume = layout.RangeVolume.Value;
                     return true;
                 case LayoutSurfaceData layout:
-                    Assign(layout.MaxRange.Value, layout.MinRange.Value, layout.Height.Value.X, layout.Height.Value.Y, layout.RangeVolume.Value);
+                    min = layout.MinRange.Value;
+                    max = layout.MaxRange.Value;
+                    heightLow = layout.Height.Value.X;
+                    heightHigh = layout.Height.Value.Y;
+                    rangeVolume = layout.RangeVolume.Value;
                     return true;
                 default:
                     return false;
-            }
-
-            void Assign(float layoutMax, float layoutMin, float low, float high, float layoutRangeVolume)
-            {
-                min = layoutMin;
-                max = layoutMax;
-                heightLow = low;
-                heightHigh = high;
-                rangeVolume = layoutRangeVolume;
             }
         }
     }
