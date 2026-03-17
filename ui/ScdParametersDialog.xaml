@@ -12,7 +12,7 @@
             <TextBlock Text="Edit SCD playback parameters for the selected song(s). Values are preloaded from the currently selected SCD." TextWrapping="Wrap"/>
 
             <TabView>
-                <TabViewItem Header="Bus Ducking">
+                <TabViewItem Header="Bus Ducking" IsClosable="False">
                     <ScrollViewer MaxHeight="580">
                         <StackPanel Spacing="10" MinWidth="550">
                             <TextBlock Text="Sound Volume (0.0 to 4.0)" FontWeight="SemiBold"/>
@@ -45,7 +45,7 @@
                     </ScrollViewer>
                 </TabViewItem>
 
-                <TabViewItem Header="Layout">
+                <TabViewItem Header="Layout" IsClosable="False">
                     <StackPanel Spacing="10" MinWidth="550">
                         <TextBlock x:Name="LayoutUnavailableText" Text="Layout range controls are unavailable for this SCD layout type." TextWrapping="Wrap" Opacity="0.75" Visibility="Collapsed"/>
 
