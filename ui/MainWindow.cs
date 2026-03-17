@@ -40,15 +40,42 @@ namespace Pickles_Playlist_Editor
 
             _treeContextMenu = BuildContextMenu();
 
-            // Restore last window size
-            var (w, h) = Settings.WindowSize;
-            this.AppWindow.Resize(new Windows.Graphics.SizeInt32(w, h));
+            TryRestoreWindowSize();
+            RegisterWindowSizeSave();
+        }
 
-            this.AppWindow.Closing += (_, _) =>
+        private void TryRestoreWindowSize()
+        {
+            try
             {
-                var size = this.AppWindow.Size;
-                Settings.WindowSize = (size.Width, size.Height);
-            };
+                // Corrupted registry values (or values saved on a different DPI/layout)
+                // can throw during resize and prevent startup.
+                var (w, h) = Settings.WindowSize;
+                w = Math.Clamp(w, 300, 8192);
+                h = Math.Clamp(h, 220, 8192);
+                this.AppWindow.Resize(new Windows.Graphics.SizeInt32(w, h));
+            }
+            catch
+            {
+                // Ignore and keep default window size so launch can continue.
+            }
+        }
+
+        private void RegisterWindowSizeSave()
+        {
+            try
+            {
+                this.AppWindow.Closing += (_, _) =>
+                {
+                    var size = this.AppWindow.Size;
+                    if (size.Width > 0 && size.Height > 0)
+                        Settings.WindowSize = (size.Width, size.Height);
+                };
+            }
+            catch
+            {
+                // If this fails, it should not block startup.
+            }
         }
 
         private void ApplySystemThemeSafely()
