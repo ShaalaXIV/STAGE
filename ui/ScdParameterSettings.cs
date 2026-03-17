@@ -11,10 +11,16 @@ namespace Pickles_Playlist_Editor
         public int AttributeVersion { get; set; }
         public int AttributeConditionFirst { get; set; }
         public bool LoopEnabled { get; set; }
+        public float LayoutMinRange { get; set; }
+        public float LayoutMaxRange { get; set; }
+        public float LayoutHeightLow { get; set; }
+        public float LayoutHeightHigh { get; set; }
+        public float LayoutRangeVolume { get; set; }
+        public bool LayoutParametersAvailable { get; set; }
 
         public static ScdParameterSettings FromScd(ScdFile scd)
         {
-            return new ScdParameterSettings
+            var settings = new ScdParameterSettings
             {
                 SoundVolume = scd.Sounds.Count > 0 ? scd.Sounds[0].Volume.Value : 1f,
                 BusDuckingFadeTime = scd.Sounds.Count > 0 ? scd.Sounds[0].BusDucking.FadeTime.Value : 1200,
@@ -24,6 +30,9 @@ namespace Pickles_Playlist_Editor
                 AttributeConditionFirst = scd.Attributes.Count > 0 ? scd.Attributes[0].ConditionFirst.Value : 0,
                 LoopEnabled = scd.Sounds.Count > 0 && scd.Sounds[0].Attributes.Value.HasFlag(VfxEditor.ScdFormat.SoundAttribute.Loop),
             };
+
+            settings.ReadLayoutValues(scd);
+            return settings;
         }
 
         public void ApplyTo(ScdFile scd)
@@ -45,6 +54,116 @@ namespace Pickles_Playlist_Editor
             {
                 scd.Attributes[0].Version.Value = (byte)System.Math.Clamp(AttributeVersion, byte.MinValue, byte.MaxValue);
                 scd.Attributes[0].ConditionFirst.Value = (byte)System.Math.Clamp(AttributeConditionFirst, byte.MinValue, byte.MaxValue);
+            }
+
+            ApplyLayoutValues(scd);
+        }
+
+        private void ReadLayoutValues(ScdFile scd)
+        {
+            if (scd.Sounds.Count == 0)
+            {
+                LayoutParametersAvailable = false;
+                return;
+            }
+
+            var data = scd.Sounds[0].Layout.GetData();
+            if (TryReadLayoutData(data, out var min, out var max, out var lowHeight, out var highHeight, out var rangeVolume))
+            {
+                LayoutMinRange = min;
+                LayoutMaxRange = max;
+                LayoutHeightLow = lowHeight;
+                LayoutHeightHigh = highHeight;
+                LayoutRangeVolume = rangeVolume;
+                LayoutParametersAvailable = true;
+            }
+            else
+            {
+                LayoutParametersAvailable = false;
+            }
+        }
+
+        private void ApplyLayoutValues(ScdFile scd)
+        {
+            if (!LayoutParametersAvailable || scd.Sounds.Count == 0) return;
+
+            var data = scd.Sounds[0].Layout.GetData();
+            switch (data)
+            {
+                case LayoutPointData layout:
+                    SetLayoutData(layout.MaxRange, layout.MinRange, layout.Height, layout.RangeVolume);
+                    break;
+                case LayoutPointDirData layout:
+                    SetLayoutData(layout.MaxRange, layout.MinRange, layout.Height, layout.RangeVolume);
+                    break;
+                case LayoutLineData layout:
+                    SetLayoutData(layout.MaxRange, layout.MinRange, layout.Height, layout.RangeVolume);
+                    break;
+                case LayoutPolylineData layout:
+                    SetLayoutData(layout.MaxRange, layout.MinRange, layout.Height, layout.RangeVolume);
+                    break;
+                case LayoutPolygonData layout:
+                    SetLayoutData(layout.MaxRange, layout.MinRange, layout.Height, layout.RangeVolume);
+                    break;
+                case LayoutLineExtControllerData layout:
+                    SetLayoutData(layout.MaxRange, layout.MinRange, layout.Height, layout.RangeVolume);
+                    break;
+                case LayoutSurfaceData layout:
+                    SetLayoutData(layout.MaxRange, layout.MinRange, layout.Height, layout.RangeVolume);
+                    break;
+            }
+        }
+
+        private void SetLayoutData(VfxEditor.Parsing.ParsedFloat maxRange, VfxEditor.Parsing.ParsedFloat minRange, VfxEditor.Parsing.ParsedFloat2 height, VfxEditor.Parsing.ParsedFloat rangeVolume)
+        {
+            minRange.Value = LayoutMinRange;
+            maxRange.Value = LayoutMaxRange;
+            height.Value = new System.Numerics.Vector2(LayoutHeightLow, LayoutHeightHigh);
+            rangeVolume.Value = LayoutRangeVolume;
+        }
+
+        private static bool TryReadLayoutData(ScdLayoutData? data, out float min, out float max, out float heightLow, out float heightHigh, out float rangeVolume)
+        {
+            min = 0f;
+            max = 0f;
+            heightLow = 0f;
+            heightHigh = 0f;
+            rangeVolume = 0f;
+
+            switch (data)
+            {
+                case LayoutPointData layout:
+                    Assign(layout.MaxRange.Value, layout.MinRange.Value, layout.Height.Value.X, layout.Height.Value.Y, layout.RangeVolume.Value);
+                    return true;
+                case LayoutPointDirData layout:
+                    Assign(layout.MaxRange.Value, layout.MinRange.Value, layout.Height.Value.X, layout.Height.Value.Y, layout.RangeVolume.Value);
+                    return true;
+                case LayoutLineData layout:
+                    Assign(layout.MaxRange.Value, layout.MinRange.Value, layout.Height.Value.X, layout.Height.Value.Y, layout.RangeVolume.Value);
+                    return true;
+                case LayoutPolylineData layout:
+                    Assign(layout.MaxRange.Value, layout.MinRange.Value, layout.Height.Value.X, layout.Height.Value.Y, layout.RangeVolume.Value);
+                    return true;
+                case LayoutPolygonData layout:
+                    Assign(layout.MaxRange.Value, layout.MinRange.Value, layout.Height.Value.X, layout.Height.Value.Y, layout.RangeVolume.Value);
+                    return true;
+                case LayoutLineExtControllerData layout:
+                    Assign(layout.MaxRange.Value, layout.MinRange.Value, layout.Height.Value.X, layout.Height.Value.Y, layout.RangeVolume.Value);
+                    return true;
+                case LayoutSurfaceData layout:
+                    Assign(layout.MaxRange.Value, layout.MinRange.Value, layout.Height.Value.X, layout.Height.Value.Y, layout.RangeVolume.Value);
+                    return true;
+                default:
+                    return false;
+            }
+
+            void Assign(float layoutMax, float layoutMin, float low, float high, float layoutRangeVolume)
+            {
+                min = layoutMin;
+                max = layoutMax;
+                heightLow = low;
+                heightHigh = high;
+                rangeVolume = layoutRangeVolume;
             }
         }
     }
