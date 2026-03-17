@@ -8,8 +8,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Velopack;
-using Velopack.Sources;
 
 namespace Pickles_Playlist_Editor
 {
@@ -103,6 +101,7 @@ namespace Pickles_Playlist_Editor
                             var songContent = new PlaylistNodeContent
                             {
                                 Name = song.Name,
+                                SongScdPath = Playlist.GetScdPath(song) ?? string.Empty,
                                 DisplayText = displayText,
                                 Level = 2,
                                 IconGlyph = PlaylistNodeContent.SongGlyph
@@ -359,7 +358,7 @@ namespace Pickles_Playlist_Editor
                     if (item.Level == 1 && Playlists.TryGetValue(item.Name, out var pl))
                     {
                         int checkedChildCount = selectedItems.Count(x => x.Level == 2 && x.Parent == item);
-                        if (checkedChildCount > 1)
+                        if (checkedChildCount > 0)
                         {
                             // skip — child songs are selected
                         }
@@ -378,14 +377,29 @@ namespace Pickles_Playlist_Editor
                     {
                         if (Playlists.TryGetValue(item.Parent.Name, out var parentPl))
                         {
-                            var song = parentPl.Options.Find(x => x.Name == item.Name);
+                            var song = FindSongOption(parentPl, item);
                             if (song != null && !song.Name.Equals("Off", StringComparison.InvariantCultureIgnoreCase))
                             {
+                                string? scdPath = Playlist.GetScdPath(song);
                                 parentPl.Options.Remove(song);
                                 parentPl.Save();
-                                string songDirectory = Path.Combine(Settings.PenumbraLocation, Settings.ModName, parentPl.Name, song.Name);
-                                if (Directory.Exists(songDirectory))
-                                    Directory.Delete(songDirectory, true);
+
+                                if (!string.IsNullOrWhiteSpace(scdPath))
+                                {
+                                    string fullSongPath = Path.Combine(Settings.PenumbraLocation, Settings.ModName, scdPath);
+                                    if (File.Exists(fullSongPath))
+                                        File.Delete(fullSongPath);
+
+                                    string? containingDir = Path.GetDirectoryName(fullSongPath);
+                                    string playlistDir = Path.Combine(Settings.PenumbraLocation, Settings.ModName, parentPl.Name);
+                                    if (!string.IsNullOrWhiteSpace(containingDir) &&
+                                        containingDir.StartsWith(playlistDir, StringComparison.OrdinalIgnoreCase) &&
+                                        Directory.Exists(containingDir) &&
+                                        !Directory.EnumerateFileSystemEntries(containingDir).Any())
+                                    {
+                                        Directory.Delete(containingDir, true);
+                                    }
+                                }
                             }
                         }
                     }
@@ -414,28 +428,6 @@ namespace Pickles_Playlist_Editor
             return null;
         }
 
-        private async Task CheckForUpdatesAsync()
-        {
-            try
-            {
-                var mgr = new UpdateManager(new GithubSource("https://github.com/solona-m/Pickles-Playlist-Editor", null, false));
-                var update = await mgr.CheckForUpdatesAsync();
-                if (update == null) return;
-
-                var result = await ShowDialogAsync(
-                    AppStrings.Dlg_UpdateAvailable_Title,
-                    AppStrings.UpdateAvailableContent(update.TargetFullRelease.Version.ToString()),
-                    AppStrings.Btn_Install, null, AppStrings.Btn_Later);
-
-                if (result != ContentDialogResult.Primary) return;
-
-                await mgr.DownloadUpdatesAsync(update);
-                mgr.ApplyUpdatesAndRestart(update);
-            }
-            catch
-            {
-                // Silently ignore update failures (no network, GitHub down, etc.)
-            }
-        }
+        // Automatic in-app update checks intentionally disabled.
     }
 }

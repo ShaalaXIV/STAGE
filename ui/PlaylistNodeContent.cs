@@ -13,6 +13,10 @@ namespace Pickles_Playlist_Editor
 
         public string Name { get; set; } = "";
 
+        // Relative SCD path used as a stable key for song-level operations.
+        // Empty for non-song nodes or virtual entries without an SCD file.
+        public string SongScdPath { get; set; } = "";
+
         public string DisplayText
         {
             get => _displayText;
