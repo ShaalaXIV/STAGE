@@ -8,35 +8,64 @@
     DefaultButton="Primary">
 
     <ScrollViewer MaxHeight="700">
-        <StackPanel Spacing="10" MinWidth="550">
+        <StackPanel Spacing="10" MinWidth="600">
             <TextBlock Text="Edit SCD playback parameters for the selected song(s). Values are preloaded from the currently selected SCD." TextWrapping="Wrap"/>
 
-            <TextBlock Text="Sound Volume (0.0 to 4.0)" FontWeight="SemiBold"/>
-            <TextBlock Text="Master playback gain of the sound entry. 1.0 is the original volume." TextWrapping="Wrap" Opacity="0.75"/>
-            <NumberBox x:Name="SoundVolumeBox" Minimum="0" Maximum="4" SpinButtonPlacementMode="Inline" SmallChange="0.05"/>
+            <TabView>
+                <TabViewItem Header="Bus Ducking">
+                    <ScrollViewer MaxHeight="580">
+                        <StackPanel Spacing="10" MinWidth="550">
+                            <TextBlock Text="Sound Volume (0.0 to 4.0)" FontWeight="SemiBold"/>
+                            <TextBlock Text="Master playback gain of the sound entry. 1.0 is the original volume." TextWrapping="Wrap" Opacity="0.75"/>
+                            <NumberBox x:Name="SoundVolumeBox" Minimum="0" Maximum="4" SpinButtonPlacementMode="Inline" SmallChange="0.05"/>
 
-            <TextBlock Text="Bus Ducking Number (0 to 255)" FontWeight="SemiBold"/>
-            <TextBlock Text="The ducking bus/channel id used for side-chain volume ducking behavior." TextWrapping="Wrap" Opacity="0.75"/>
-            <NumberBox x:Name="BusDuckingNumberBox" Minimum="0" Maximum="255" SpinButtonPlacementMode="Inline" SmallChange="1"/>
+                            <TextBlock Text="Bus Ducking Number (0 to 255)" FontWeight="SemiBold"/>
+                            <TextBlock Text="The ducking bus/channel id used for side-chain volume ducking behavior." TextWrapping="Wrap" Opacity="0.75"/>
+                            <NumberBox x:Name="BusDuckingNumberBox" Minimum="0" Maximum="255" SpinButtonPlacementMode="Inline" SmallChange="1"/>
 
-            <TextBlock Text="Bus Ducking Fade Time (ms)" FontWeight="SemiBold"/>
-            <TextBlock Text="How quickly ducking fades in/out in milliseconds." TextWrapping="Wrap" Opacity="0.75"/>
-            <NumberBox x:Name="BusDuckingFadeTimeBox" Minimum="0" Maximum="600000" SpinButtonPlacementMode="Inline" SmallChange="100"/>
+                            <TextBlock Text="Bus Ducking Fade Time (ms)" FontWeight="SemiBold"/>
+                            <TextBlock Text="How quickly ducking fades in/out in milliseconds." TextWrapping="Wrap" Opacity="0.75"/>
+                            <NumberBox x:Name="BusDuckingFadeTimeBox" Minimum="0" Maximum="600000" SpinButtonPlacementMode="Inline" SmallChange="100"/>
 
-            <TextBlock Text="Bus Ducking Volume" FontWeight="SemiBold"/>
-            <TextBlock Text="Target ducking level (relative volume modifier) while ducking is active." TextWrapping="Wrap" Opacity="0.75"/>
-            <NumberBox x:Name="BusDuckingVolumeBox" Minimum="-10" Maximum="10" SpinButtonPlacementMode="Inline" SmallChange="0.05"/>
+                            <TextBlock Text="Bus Ducking Volume" FontWeight="SemiBold"/>
+                            <TextBlock Text="Target ducking level (relative volume modifier) while ducking is active." TextWrapping="Wrap" Opacity="0.75"/>
+                            <NumberBox x:Name="BusDuckingVolumeBox" Minimum="-10" Maximum="10" SpinButtonPlacementMode="Inline" SmallChange="0.05"/>
 
-            <TextBlock Text="Attribute Version (0 to 255)" FontWeight="SemiBold"/>
-            <TextBlock Text="SCD attribute version byte used by the file metadata." TextWrapping="Wrap" Opacity="0.75"/>
-            <NumberBox x:Name="AttributeVersionBox" Minimum="0" Maximum="255" SpinButtonPlacementMode="Inline" SmallChange="1"/>
+                            <TextBlock Text="Attribute Version (0 to 255)" FontWeight="SemiBold"/>
+                            <TextBlock Text="SCD attribute version byte used by the file metadata." TextWrapping="Wrap" Opacity="0.75"/>
+                            <NumberBox x:Name="AttributeVersionBox" Minimum="0" Maximum="255" SpinButtonPlacementMode="Inline" SmallChange="1"/>
 
-            <TextBlock Text="Attribute Condition First (0 to 255)" FontWeight="SemiBold"/>
-            <TextBlock Text="Primary condition selector used in the first attribute slot." TextWrapping="Wrap" Opacity="0.75"/>
-            <NumberBox x:Name="AttributeConditionFirstBox" Minimum="0" Maximum="255" SpinButtonPlacementMode="Inline" SmallChange="1"/>
+                            <TextBlock Text="Attribute Condition First (0 to 255)" FontWeight="SemiBold"/>
+                            <TextBlock Text="Primary condition selector used in the first attribute slot." TextWrapping="Wrap" Opacity="0.75"/>
+                            <NumberBox x:Name="AttributeConditionFirstBox" Minimum="0" Maximum="255" SpinButtonPlacementMode="Inline" SmallChange="1"/>
 
-            <CheckBox x:Name="LoopEnabledCheckBox" Content="Loop Enabled"/>
-            <TextBlock Text="Controls whether the SCD sound is marked as looping via the Loop attribute flag." TextWrapping="Wrap" Opacity="0.75"/>
+                            <CheckBox x:Name="LoopEnabledCheckBox" Content="Loop Enabled"/>
+                            <TextBlock Text="Controls whether the SCD sound is marked as looping via the Loop attribute flag." TextWrapping="Wrap" Opacity="0.75"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabViewItem>
+
+                <TabViewItem Header="Layout">
+                    <StackPanel Spacing="10" MinWidth="550">
+                        <TextBlock x:Name="LayoutUnavailableText" Text="Layout range controls are unavailable for this SCD layout type." TextWrapping="Wrap" Opacity="0.75" Visibility="Collapsed"/>
+
+                        <TextBlock Text="Min Range" FontWeight="SemiBold"/>
+                        <NumberBox x:Name="LayoutMinRangeBox" Minimum="-100000" Maximum="100000" SpinButtonPlacementMode="Inline" SmallChange="0.1"/>
+
+                        <TextBlock Text="Max Range" FontWeight="SemiBold"/>
+                        <NumberBox x:Name="LayoutMaxRangeBox" Minimum="-100000" Maximum="100000" SpinButtonPlacementMode="Inline" SmallChange="0.1"/>
+
+                        <TextBlock Text="Height (Lower)" FontWeight="SemiBold"/>
+                        <NumberBox x:Name="LayoutHeightLowBox" Minimum="-100000" Maximum="100000" SpinButtonPlacementMode="Inline" SmallChange="0.1"/>
+
+                        <TextBlock Text="Height (Upper)" FontWeight="SemiBold"/>
+                        <NumberBox x:Name="LayoutHeightHighBox" Minimum="-100000" Maximum="100000" SpinButtonPlacementMode="Inline" SmallChange="0.1"/>
+
+                        <TextBlock Text="Range Volume" FontWeight="SemiBold"/>
+                        <NumberBox x:Name="LayoutRangeVolumeBox" Minimum="-1000" Maximum="1000" SpinButtonPlacementMode="Inline" SmallChange="0.05"/>
+                    </StackPanel>
+                </TabViewItem>
+            </TabView>
         </StackPanel>
     </ScrollViewer>
 </ContentDialog>

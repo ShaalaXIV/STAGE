@@ -1,3 +1,4 @@
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace Pickles_Playlist_Editor
@@ -19,7 +20,27 @@ namespace Pickles_Playlist_Editor
             AttributeConditionFirstBox.Value = initial.AttributeConditionFirst;
             LoopEnabledCheckBox.IsChecked = initial.LoopEnabled;
 
+            LayoutMinRangeBox.Value = initial.LayoutMinRange;
+            LayoutMaxRangeBox.Value = initial.LayoutMaxRange;
+            LayoutHeightLowBox.Value = initial.LayoutHeightLow;
+            LayoutHeightHighBox.Value = initial.LayoutHeightHigh;
+            LayoutRangeVolumeBox.Value = initial.LayoutRangeVolume;
+
+            SetLayoutControlsEnabled(initial.LayoutParametersAvailable);
+
             PrimaryButtonClick += OnPrimaryButtonClick;
+        }
+
+        private void SetLayoutControlsEnabled(bool enabled)
+        {
+            var visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
+            LayoutUnavailableText.Visibility = visibility;
+
+            LayoutMinRangeBox.IsEnabled = enabled;
+            LayoutMaxRangeBox.IsEnabled = enabled;
+            LayoutHeightLowBox.IsEnabled = enabled;
+            LayoutHeightHighBox.IsEnabled = enabled;
+            LayoutRangeVolumeBox.IsEnabled = enabled;
         }
 
         private void OnPrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
@@ -31,6 +52,15 @@ namespace Pickles_Playlist_Editor
             SelectedSettings.AttributeVersion = (int)AttributeVersionBox.Value;
             SelectedSettings.AttributeConditionFirst = (int)AttributeConditionFirstBox.Value;
             SelectedSettings.LoopEnabled = LoopEnabledCheckBox.IsChecked == true;
+
+            if (SelectedSettings.LayoutParametersAvailable)
+            {
+                SelectedSettings.LayoutMinRange = (float)LayoutMinRangeBox.Value;
+                SelectedSettings.LayoutMaxRange = (float)LayoutMaxRangeBox.Value;
+                SelectedSettings.LayoutHeightLow = (float)LayoutHeightLowBox.Value;
+                SelectedSettings.LayoutHeightHigh = (float)LayoutHeightHighBox.Value;
+                SelectedSettings.LayoutRangeVolume = (float)LayoutRangeVolumeBox.Value;
+            }
         }
     }
 }
