@@ -10,7 +10,8 @@
   <data name="ShuffleButton.Label" xml:space="preserve"><value>Blanda</value></data>
   <data name="SortByBPMButton.Label" xml:space="preserve"><value>Sortera</value></data>
   <data name="SortByBPMMenuItem.Text" xml:space="preserve"><value>Sortera efter BPM</value></data>
-  <data name="SortByNameMenuItem.Text" xml:space="preserve"><value>Sortera efter namn</value></data>
+  <data name="SortByNameMenuItem.Text" xml:space="preserve"><value>Sortera låtar efter namn</value></data>
+  <data name="SortPlaylistsByNameMenuItem.Text" xml:space="preserve"><value>Sortera spellistor efter namn</value></data>
   <data name="PreviousButton.Label" xml:space="preserve"><value>Föregående</value></data>
   <data name="PlayButton.Label" xml:space="preserve"><value>Spela</value></data>
   <data name="PauseButton.Label" xml:space="preserve"><value>Pausa</value></data>

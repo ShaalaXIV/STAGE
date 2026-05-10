@@ -10,7 +10,8 @@
   <data name="ShuffleButton.Label" xml:space="preserve"><value>Shuffle</value></data>
   <data name="SortByBPMButton.Label" xml:space="preserve"><value>Sort</value></data>
   <data name="SortByBPMMenuItem.Text" xml:space="preserve"><value>Sort by BPM</value></data>
-  <data name="SortByNameMenuItem.Text" xml:space="preserve"><value>Sort by Name</value></data>
+  <data name="SortByNameMenuItem.Text" xml:space="preserve"><value>Sort songs by name</value></data>
+  <data name="SortPlaylistsByNameMenuItem.Text" xml:space="preserve"><value>Sort playlists by name</value></data>
   <data name="PreviousButton.Label" xml:space="preserve"><value>Previous</value></data>
   <data name="PlayButton.Label" xml:space="preserve"><value>Play</value></data>
   <data name="PauseButton.Label" xml:space="preserve"><value>Pause</value></data>

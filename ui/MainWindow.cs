@@ -503,7 +503,7 @@ namespace Pickles_Playlist_Editor
 
             DeleteButton.IsEnabled = hasCheckedPlaylist || hasCheckedSong;
             ShuffleButton.IsEnabled = hasCheckedPlaylist;
-            SortByBPMButton.IsEnabled = hasCheckedPlaylist;
+            SortByBPMButton.IsEnabled = hasCheckedPlaylist || Playlists.Count > 0;
         }
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e) => _ = OpenSettingsAsync();
@@ -574,6 +574,19 @@ namespace Pickles_Playlist_Editor
                     pl.SortByName();
             }
             LoadPlaylists();
+        }
+
+        private async void SortPlaylistsByName_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Playlist.SortAllPlaylistsByName();
+                LoadPlaylists();
+            }
+            catch (Exception ex)
+            {
+                await ShowDialogAsync(AppStrings.Dlg_Error, ex.Message);
+            }
         }
 
         private void ShowOperationSummary(string title, int successCount, int totalCount, System.Collections.Generic.List<string> errors)
