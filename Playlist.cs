@@ -263,6 +263,7 @@ namespace Pickles_Playlist_Editor
             if (!Directory.Exists(modDirectory))
                 return playlists;
 
+            var loadedPlaylists = new List<Playlist>();
             var fileNames = Directory.GetFiles(modDirectory, "group_*.json");
             foreach (string file in fileNames)
             {
@@ -276,7 +277,7 @@ namespace Pickles_Playlist_Editor
                     }
                     else
                     {
-                        playlists[playlist.Name] = playlist;
+                        loadedPlaylists.Add(playlist);
                     }
                 }
                 catch (Exception ex)
@@ -284,8 +285,127 @@ namespace Pickles_Playlist_Editor
                     Console.Error.WriteLine("Error loading playlist from file " + file + ": " + ex);
                 }
             }
+
+            foreach (var playlist in loadedPlaylists
+                .OrderBy(p => p.Priority)
+                .ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                playlists[playlist.Name] = playlist;
+            }
             return playlists;
         }
+
+        public static void SortAllPlaylistsByName()
+        {
+            if (Settings.PenumbraLocation == null || Settings.ModName == null)
+                return;
+
+            string modDirectory = Path.Combine(Settings.PenumbraLocation, Settings.ModName);
+            if (!Directory.Exists(modDirectory))
+                return;
+
+            var playlistFiles = Directory.GetFiles(modDirectory, "group_*.json")
+                .Select(file => new
+                {
+                    OriginalPath = file,
+                    Playlist = JsonConvert.DeserializeObject<Playlist>(File.ReadAllText(file))
+                })
+                .Where(item => item.Playlist != null)
+                .Select(item => new PlaylistFile(item.OriginalPath, item.Playlist!))
+                .OrderBy(item => item.Playlist.Name, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(item => item.Playlist.Priority)
+                .ThenBy(item => item.OriginalPath, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (playlistFiles.Count == 0)
+                return;
+
+            string backupDirectory = Path.Combine(Path.GetTempPath(), "PicklesPlaylistSort_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(backupDirectory);
+
+            var tempPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var targetPaths = playlistFiles
+                .Select((item, index) => GetOrderedGroupFilePath(modDirectory, item.Playlist.Name, index + 1))
+                .ToList();
+
+            try
+            {
+                foreach (var item in playlistFiles)
+                {
+                    File.Copy(item.OriginalPath, Path.Combine(backupDirectory, Path.GetFileName(item.OriginalPath)), true);
+                }
+
+                var originalPaths = new HashSet<string>(playlistFiles.Select(item => item.OriginalPath), StringComparer.OrdinalIgnoreCase);
+                foreach (var targetPath in targetPaths)
+                {
+                    if (File.Exists(targetPath) && !originalPaths.Contains(targetPath))
+                        throw new IOException($"Cannot sort playlists because target file already exists: {targetPath}");
+                }
+
+                foreach (var item in playlistFiles)
+                {
+                    string tempPath = item.OriginalPath + ".sorttmp_" + Guid.NewGuid().ToString("N");
+                    File.Move(item.OriginalPath, tempPath);
+                    tempPaths[item.OriginalPath] = tempPath;
+                }
+
+                for (int i = 0; i < playlistFiles.Count; i++)
+                {
+                    var item = playlistFiles[i];
+                    item.Playlist.Priority = i + 1;
+                    string json = JsonConvert.SerializeObject(item.Playlist, Formatting.Indented);
+                    File.WriteAllText(targetPaths[i], json);
+                }
+
+                foreach (var tempPath in tempPaths.Values)
+                {
+                    if (File.Exists(tempPath))
+                        File.Delete(tempPath);
+                }
+
+                RefreshPenumbraMod();
+            }
+            catch
+            {
+                foreach (var targetPath in targetPaths)
+                {
+                    if (File.Exists(targetPath))
+                        File.Delete(targetPath);
+                }
+
+                foreach (var item in playlistFiles)
+                {
+                    if (tempPaths.TryGetValue(item.OriginalPath, out var tempPath) && File.Exists(tempPath))
+                        File.Move(tempPath, item.OriginalPath);
+                }
+
+                foreach (var backupFile in Directory.GetFiles(backupDirectory))
+                {
+                    File.Copy(backupFile, Path.Combine(modDirectory, Path.GetFileName(backupFile)), true);
+                }
+
+                throw;
+            }
+            finally
+            {
+                try
+                {
+                    if (Directory.Exists(backupDirectory))
+                        Directory.Delete(backupDirectory, true);
+                }
+                catch
+                {
+                    // best-effort cleanup only
+                }
+            }
+        }
+
+        private static string GetOrderedGroupFilePath(string modDirectory, string playlistName, int order)
+        {
+            return Path.Combine(modDirectory, $"group_{order:D3}_{playlistName.Replace("/", "_")}.json");
+        }
+
+        private sealed record PlaylistFile(string OriginalPath, Playlist Playlist);
 
         public void Add(string[] fileNames, Action<int>? callback = null)
         {

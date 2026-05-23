@@ -41,7 +41,9 @@
                 <AppBarButton.Flyout>
                     <MenuFlyout>
                         <MenuFlyoutItem x:Name="SortByBPMMenuItem" x:Uid="SortByBPMMenuItem" Text="Sort by BPM" Click="SortByBPM_Click"/>
-                        <MenuFlyoutItem x:Name="SortByNameMenuItem" x:Uid="SortByNameMenuItem" Text="Sort by Name" Click="SortByName_Click"/>
+                        <MenuFlyoutItem x:Name="SortByNameMenuItem" x:Uid="SortByNameMenuItem" Text="Sort songs by name" Click="SortByName_Click"/>
+                        <MenuFlyoutSeparator/>
+                        <MenuFlyoutItem x:Name="SortPlaylistsByNameMenuItem" x:Uid="SortPlaylistsByNameMenuItem" Text="Sort playlists by name" Click="SortPlaylistsByName_Click"/>
                     </MenuFlyout>
                 </AppBarButton.Flyout>
             </AppBarButton>
