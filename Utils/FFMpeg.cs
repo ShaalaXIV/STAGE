@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using Pickles_Playlist_Editor.Tools;
+using System.Diagnostics;
 
 namespace Pickles_Playlist_Editor.Utils
 {
@@ -40,7 +41,9 @@ namespace Pickles_Playlist_Editor.Utils
         private static void Run(string arguments)
         {
             using var process = new Process();
-            process.StartInfo.FileName = "ffmpeg.exe";
+            process.StartInfo.FileName = File.Exists(DependencyUpdateService.GetFfmpegPath())
+                ? DependencyUpdateService.GetFfmpegPath()
+                : "ffmpeg.exe";
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.CreateNoWindow = true;
             process.StartInfo.RedirectStandardError = true;
