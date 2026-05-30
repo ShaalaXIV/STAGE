@@ -160,6 +160,49 @@ namespace Pickles_Playlist_Editor
             await RepackageScdFromDefaultWorkflowAsync(node);
         }
 
+        internal async Task<(int updated, int total, List<string> errors)> ConvertAllTracksToCurrentDefaultScdAsync()
+        {
+            var targets = GetAllSongTargets();
+            if (targets.Count == 0)
+                return (0, 0, new List<string>());
+
+            SetProgressBarText(AppStrings.Prog_RepackagingScdFromDefault);
+            SetProgressBarPercent(0);
+            int updated = 0;
+            var errors = new List<string>();
+
+            await Task.Run(() =>
+            {
+                int total = targets.Count, current = 0;
+                foreach (var (playlist, option) in targets)
+                {
+                    current++;
+                    try
+                    {
+                        SetProgressBarText(AppStrings.RepackagingScdFromDefault(current, total));
+                        RepackageSongScdFromDefault(option);
+                        updated++;
+                    }
+                    catch (Exception ex) { errors.Add($"{playlist.Name}/{option.Name}: {ex.Message}"); }
+                    finally { SetProgressBarPercent((int)((updated + errors.Count) / (double)total * 100)); }
+                }
+            });
+
+            SetProgressBarPercent(100);
+            return (updated, targets.Count, errors);
+        }
+
+        private static List<(Playlist playlist, Option option)> GetAllSongTargets()
+        {
+            var results = new List<(Playlist, Option)>();
+            foreach (var playlist in Playlists.Values)
+                foreach (var option in playlist.Options)
+                    if (!string.IsNullOrEmpty(Playlist.GetScdPath(option)))
+                        results.Add((playlist, option));
+            return results;
+        }
+
+
         private List<(Playlist playlist, Option option)> GetSongTargetsForNode(PlaylistNodeContent node)
         {
             var results = new List<(Playlist, Option)>();
