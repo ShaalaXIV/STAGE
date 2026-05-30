@@ -216,6 +216,45 @@ namespace Pickles_Playlist_Editor
             }
         }
 
+        
+
+        public static bool AutoUpdateDependencies
+        {
+            get
+            {
+                try
+                {
+                    var value = Registry.CurrentUser.OpenSubKey(s_subKey)?.GetValue("AutoUpdateDependencies", 1);
+                    if (value is int iv) return iv != 0;
+                    if (value is long lv) return lv != 0;
+                    if (value is string sv && bool.TryParse(sv, out var bv)) return bv;
+                    if (value is string sv2 && int.TryParse(sv2, out var parsed)) return parsed != 0;
+                }
+                catch { }
+                return true;
+            }
+            set
+            {
+                using (RegistryKey key = Registry.CurrentUser.CreateSubKey(s_subKey))
+                {
+                    key?.SetValue("AutoUpdateDependencies", value ? 1 : 0);
+                }
+            }
+        }
+
+        public static string FfmpegBuildTag
+        {
+            get => (string)Registry.CurrentUser.OpenSubKey(s_subKey)?.GetValue("FfmpegBuildTag", string.Empty) ?? string.Empty;
+            set
+            {
+                using var key = Registry.CurrentUser.CreateSubKey(s_subKey);
+                if (string.IsNullOrWhiteSpace(value))
+                    key?.DeleteValue("FfmpegBuildTag", throwOnMissingValue: false);
+                else
+                    key?.SetValue("FfmpegBuildTag", value.Trim());
+            }
+        }
+
         public static readonly string DefaultBackgroundImagePath = System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "PicklesPlaylistEditor", "current", "ui", "picklebackground.png");

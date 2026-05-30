@@ -55,6 +55,9 @@
 
 <CheckBox x:Name="NormalizeVolumeCheckBox" x:Uid="NormalizeVolumeCheckBox" Content="Normalize Volume"/>
         <CheckBox x:Name="AutoReloadCheckBox" x:Uid="AutoReloadCheckBox" Content="Auto Reload Mod" IsChecked="True"/>
+        <CheckBox x:Name="AutoUpdateDependenciesCheckBox" Content="Auto-update yt-dlp and FFmpeg before YouTube downloads" IsChecked="True"/>
+
+        <Button Content="Check and Update Dependencies Now" Click="UpdateDependenciesButton_Click" HorizontalAlignment="Stretch"/>
 
         <Button x:Uid="OrganizeLibraryButton" Content="Organize Library" Click="OrganizeLibraryButton_Click" HorizontalAlignment="Stretch"/>
 

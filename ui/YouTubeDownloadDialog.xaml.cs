@@ -79,6 +79,14 @@ namespace Pickles_Playlist_Editor
             {
                 var mode = ModeComboBox.SelectedIndex == 1 ? YtDownloadMode.Playlist : YtDownloadMode.Single;
 
+                if (Settings.AutoUpdateDependencies)
+                {
+                    StatusLabel.Text = "Checking dependency updates...";
+                    ProgressBar1.Value = 3;
+                    await DependencyUpdateService.EnsureDependenciesUpToDateAsync(s => StatusLabel.Text = s);
+                    ProgressBar1.Value = 5;
+                }
+
                 var progress = new Progress<YtDlpProgressInfo>(info =>
                 {
                     StatusLabel.Text = $"{info.Stage} {info.Current}/{info.Total}";

@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using Pickles_Playlist_Editor.Tools;
 
 namespace Pickles_Playlist_Editor
 {
@@ -20,6 +21,7 @@ namespace Pickles_Playlist_Editor
             DefaultScdTemplateTextBox.Text = Settings.DefaultScdTemplateSourcePath;
             NormalizeVolumeCheckBox.IsChecked = Settings.NormalizeVolume;
             AutoReloadCheckBox.IsChecked = Settings.AutoReloadMod;
+            AutoUpdateDependenciesCheckBox.IsChecked = Settings.AutoUpdateDependencies;
             ValidateFields();
         }
 
@@ -130,6 +132,7 @@ namespace Pickles_Playlist_Editor
             Settings.DefaultScdTemplateSourcePath = DefaultScdTemplateTextBox.Text.Trim();
             Settings.NormalizeVolume = NormalizeVolumeCheckBox.IsChecked == true;
             Settings.AutoReloadMod = AutoReloadCheckBox.IsChecked == true;
+            Settings.AutoUpdateDependencies = AutoUpdateDependenciesCheckBox.IsChecked == true;
 
             if (!string.IsNullOrWhiteSpace(Settings.DefaultScdTemplateSourcePath) && File.Exists(Settings.DefaultScdTemplateSourcePath))
             {
@@ -154,5 +157,27 @@ namespace Pickles_Playlist_Editor
             foreach (var playlist in MainWindow.Playlists.Values)
                 playlist.Cleanup();
         }
+
+
+        private async void UpdateDependenciesButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                IsPrimaryButtonEnabled = false;
+                await DependencyUpdateService.EnsureDependenciesUpToDateAsync();
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+                MessageBox(hwnd, $"Dependencies are up to date.\n{DependencyUpdateService.GetFfmpegVersion()}", "Dependency Update", 0x00000040);
+            }
+            catch (Exception ex)
+            {
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+                MessageBox(hwnd, ex.Message, "Dependency Update Failed", 0x00000010);
+            }
+            finally
+            {
+                ValidateFields();
+            }
+        }
+
     }
 }
