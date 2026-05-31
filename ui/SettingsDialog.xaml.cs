@@ -159,6 +159,67 @@ namespace Pickles_Playlist_Editor
         }
 
 
+        private async void ConvertAllToDefaultScdButton_Click(object sender, RoutedEventArgs e)
+        {
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+            int total = 0;
+            foreach (var playlist in MainWindow.Playlists.Values)
+                foreach (var option in playlist.Options)
+                    if (!string.IsNullOrEmpty(Playlist.GetScdPath(option)))
+                        total++;
+
+            if (total == 0)
+            {
+                MessageBox(hwnd, AppStrings.Dlg_NoSongs, "Convert All Tracks", 0x00000040);
+                return;
+            }
+
+            int result = MessageBox(hwnd,
+                AppStrings.RepackageScdFromDefaultConfirm(total),
+                "Convert All Tracks",
+                0x00000001 | 0x00000030); // MB_OKCANCEL | MB_ICONWARNING
+            if (result != 1)
+                return;
+
+            string templatePath = DefaultScdTemplateTextBox.Text.Trim();
+            if (!string.IsNullOrWhiteSpace(templatePath))
+            {
+                if (!File.Exists(templatePath))
+                {
+                    MessageBox(hwnd, $"Default SCD template not found:\n{templatePath}", "Convert All Tracks", 0x00000010);
+                    return;
+                }
+
+                string targetDefaultScd = Path.Combine(Directory.GetCurrentDirectory(), "default.scd");
+                File.Copy(templatePath, targetDefaultScd, overwrite: true);
+                Settings.DefaultScdTemplateSourcePath = templatePath;
+            }
+
+            string currentDefaultScd = Path.Combine(Directory.GetCurrentDirectory(), "default.scd");
+            if (!File.Exists(currentDefaultScd))
+            {
+                MessageBox(hwnd, $"Current default.scd not found:\n{currentDefaultScd}", "Convert All Tracks", 0x00000010);
+                return;
+            }
+
+            ConvertAllToDefaultScdButton.IsEnabled = false;
+            try
+            {
+                var (updated, processed, errors) = await App.MainWindow.ConvertAllTracksToCurrentDefaultScdAsync();
+                string content = errors.Count == 0
+                    ? AppStrings.Processed(updated, processed)
+                    : AppStrings.Processed(updated, processed) +
+                      AppStrings.ProcessedErrors(string.Join("\n", errors.GetRange(0, Math.Min(errors.Count, 10))) +
+                      (errors.Count > 10 ? "\n" + AppStrings.AndMore(errors.Count - 10) : ""));
+                MessageBox(hwnd, content, AppStrings.Summary_RepackageScdFromDefault, errors.Count == 0 ? 0x00000040u : 0x00000030u);
+            }
+            finally
+            {
+                ConvertAllToDefaultScdButton.IsEnabled = true;
+            }
+        }
+
+
         private async void UpdateDependenciesButton_Click(object sender, RoutedEventArgs e)
         {
             try

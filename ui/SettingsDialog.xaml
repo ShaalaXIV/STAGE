@@ -61,5 +61,10 @@
 
         <Button x:Uid="OrganizeLibraryButton" Content="Organize Library" Click="OrganizeLibraryButton_Click" HorizontalAlignment="Stretch"/>
 
+        <Button x:Name="ConvertAllToDefaultScdButton"
+                Content="Convert All Tracks to Current default.scd"
+                Click="ConvertAllToDefaultScdButton_Click"
+                HorizontalAlignment="Stretch"/>
+
     </StackPanel>
 </ContentDialog>
