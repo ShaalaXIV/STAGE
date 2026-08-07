@@ -1,16 +1,16 @@
-﻿using libZPlay;
-using Pickles_Playlist_Editor.Tools;
+using libZPlay;
+using STAGE.Tools;
 using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Pickles_Playlist_Editor
+namespace STAGE
 {
     internal static class Player
     {
         static ZPlay player = new ZPlay();
-        private static readonly int[] EqualizerBands = [64, 250, 1000, 4000, 12000];
+        private static readonly int[] EqualizerBands = [60, 230, 910, 3600, 14000];
 
         enum PauseState
         {
@@ -183,8 +183,11 @@ namespace Pickles_Playlist_Editor
                 ConvertToBandGain(settings.TrebleGain)
             ];
 
+            float volumeFactor = EqualizerSettings.UserValueToVolumeFactor(settings.VolumeLevel);
+            int preampGain = (int)Math.Round(20 * Math.Log10(volumeFactor));
+
             player.EnableEqualizer(true);
-            player.SetEqualizerParam(0, ref bandGains, bandGains.Length);
+            player.SetEqualizerParam(preampGain, ref bandGains, bandGains.Length);
         }
 
         public static void DisableRealtimeEqualizer()

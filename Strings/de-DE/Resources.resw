@@ -24,11 +24,11 @@
   <data name="EqualizerDlg.PrimaryButtonText" xml:space="preserve"><value>Anwenden</value></data>
   <data name="EqualizerDlg.SecondaryButtonText" xml:space="preserve"><value>Verwerfen</value></data>
   <data name="EqualizerHint.Text" xml:space="preserve"><value>EQ-Einstellungen anpassen und dann die Wiedergabe in der App testen.</value></data>
-  <data name="BassLabel2.Text" xml:space="preserve"><value>Bass (64 Hz)</value></data>
-  <data name="LowMidLabel2.Text" xml:space="preserve"><value>Untere Mitten (250 Hz)</value></data>
-  <data name="MidLabel2.Text" xml:space="preserve"><value>Mitten (1 kHz)</value></data>
-  <data name="HighMidLabel2.Text" xml:space="preserve"><value>Obere Mitten (4 kHz)</value></data>
-  <data name="TrebleLabel2.Text" xml:space="preserve"><value>Höhen (12 kHz)</value></data>
+  <data name="BassLabel2.Text" xml:space="preserve"><value>Bass (60 Hz)</value></data>
+  <data name="LowMidLabel2.Text" xml:space="preserve"><value>Untere Mitten (230 Hz)</value></data>
+  <data name="MidLabel2.Text" xml:space="preserve"><value>Mitten (910 Hz)</value></data>
+  <data name="HighMidLabel2.Text" xml:space="preserve"><value>Obere Mitten (3,6 kHz)</value></data>
+  <data name="TrebleLabel2.Text" xml:space="preserve"><value>Höhen (14 kHz)</value></data>
   <data name="NewPlaylistDlg.Title" xml:space="preserve"><value>Neue Wiedergabeliste</value></data>
   <data name="NewPlaylistDlg.PrimaryButtonText" xml:space="preserve"><value>Erstellen</value></data>
   <data name="NewPlaylistDlg.CloseButtonText" xml:space="preserve"><value>Abbrechen</value></data>
@@ -46,7 +46,7 @@
   <data name="BrowseBackgroundButton.Content" xml:space="preserve"><value>Durchsuchen</value></data>
   <data name="DefaultScdTemplateLabel.Text" xml:space="preserve"><value>Default SCD template file</value></data>
   <data name="BrowseDefaultScdTemplateButton.Content" xml:space="preserve"><value>Browse</value></data>
-  <data name="ScdVolumePercentageLabel.Text" xml:space="preserve"><value>SCD-Lautstärkeprozentsatz</value></data>
+  <data name="ScdAudioVolumeLabel.Text" xml:space="preserve"><value>SCD-Audiolautstärke (Soundy-Skala: 1,0 bis 5,0)</value></data>
 <data name="NormalizeVolumeCheckBox.Content" xml:space="preserve"><value>Lautstärke normalisieren</value></data>
   <data name="AutoReloadCheckBox.Content" xml:space="preserve"><value>Mod automatisch neu laden</value></data>
   <data name="OrganizeLibraryButton.Content" xml:space="preserve"><value>Bibliothek organisieren</value></data>
@@ -77,12 +77,7 @@
   <data name="Dlg_ExtractAudio_Title" xml:space="preserve"><value>Audio extrahieren</value></data>
   <data name="Dlg_ExtractAudio_NoSongs" xml:space="preserve"><value>Keine Songs zur Extraktion gefunden.</value></data>
   <data name="Summary_ExtractAudio" xml:space="preserve"><value>Audioextraktion abgeschlossen</value></data>
-  <data name="Dlg_NormalizeAudio_Title" xml:space="preserve"><value>Audio normalisieren</value></data>
   <data name="Dlg_NoSongs" xml:space="preserve"><value>Keine Songs gefunden.</value></data>
-  <data name="Dlg_NormalizeConfirm" xml:space="preserve"><value>{0} Song(s) normalisieren und neu packen? Vorhandene SCD-Dateien werden überschrieben.</value></data>
-  <data name="Summary_NormalizeAudio" xml:space="preserve"><value>Audionormalisierung abgeschlossen</value></data>
-  <data name="Dlg_IncreaseVolume_Title" xml:space="preserve"><value>Lautstärke erhöhen</value></data>
-  <data name="Summary_IncreaseVolume" xml:space="preserve"><value>Lautstärkeerhöhung abgeschlossen</value></data>
   <data name="Dlg_Equalizer_Title" xml:space="preserve"><value>Equalizer</value></data>
   <data name="Dlg_ApplyEQ_Title" xml:space="preserve"><value>EQ-Einstellungen anwenden</value></data>
   <data name="Dlg_ApplyEQConfirm" xml:space="preserve"><value>EQ auf {0} Song(s) anwenden? Vorhandene SCD-Dateien werden überschrieben.</value></data>
@@ -104,8 +99,6 @@
   <data name="Dlg_YTAddFailed" xml:space="preserve"><value>Fehler beim Hinzufügen heruntergeladener Dateien: {0}</value></data>
   <data name="YT_DefaultPlaylist" xml:space="preserve"><value>YouTube-Wiedergabeliste</value></data>
   <data name="Menu_ExtractAudio" xml:space="preserve"><value>Audio extrahieren</value></data>
-  <data name="Menu_NormalizeAudio" xml:space="preserve"><value>Audio normalisieren</value></data>
-  <data name="Menu_IncreaseVolume" xml:space="preserve"><value>Lautstärke erhöhen</value></data>
   <data name="Menu_ManageEQ" xml:space="preserve"><value>EQ-Einstellungen verwalten</value></data>
   <data name="Dlg_ErrorLoadingSong" xml:space="preserve"><value>Fehler beim Laden von Song {0} in Wiedergabeliste {1}: {2}</value></data>
   <data name="Dlg_ErrorLoadingPlaylists" xml:space="preserve"><value>Fehler beim Laden der Wiedergabelisten: {0}</value></data>
@@ -113,8 +106,6 @@
   <data name="Dlg_ProcessedErrors" xml:space="preserve"><value>\n\nFehler:\n{0}</value></data>
   <data name="Dlg_AndMore" xml:space="preserve"><value>...und {0} weitere.</value></data>
   <data name="Prog_ExtractingAudio" xml:space="preserve"><value>Audio wird extrahiert...</value></data>
-  <data name="Prog_NormalizingAudio" xml:space="preserve"><value>Audio wird normalisiert...</value></data>
-  <data name="Prog_IncreasingVolume" xml:space="preserve"><value>Lautstärke wird erhöht...</value></data>
   <data name="Menu_ManageScdParameters" xml:space="preserve"><value>Manage SCD Parameters</value></data>
   <data name="Prog_ApplyingScdParameters" xml:space="preserve"><value>Applying SCD parameters...</value></data>
   <data name="Prog_ApplyingEQSettings" xml:space="preserve"><value>EQ-Einstellungen werden angewendet...</value></data>

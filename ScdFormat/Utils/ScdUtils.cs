@@ -1,5 +1,5 @@
-using Pickles_Playlist_Editor;
-using Pickles_Playlist_Editor.Utils;
+using STAGE;
+using STAGE.Utils;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;

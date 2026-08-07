@@ -1,11 +1,12 @@
 using System.IO;
 
-namespace Pickles_Playlist_Editor
+namespace STAGE
 {
     public sealed partial class MainWindow
     {
         private void PlayButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
+            if (IsVfxPapMode) return;
             if (_selectedNode == null || _selectedNode.Level != 2) return;
             string songName = _selectedNode.Name;
             string? playlistName = _selectedNode.Parent?.Name;
@@ -16,7 +17,7 @@ namespace Pickles_Playlist_Editor
 
         private void PlayOption(Option opt)
         {
-            string songPath = Path.Combine(Settings.PenumbraLocation, Settings.ModName, Playlist.GetScdPath(opt));
+            string songPath = Playlist.GetFullScdPath(opt);
             if (File.Exists(songPath))
             {
                 Player.Play(songPath, onEnded: () =>
@@ -35,6 +36,7 @@ namespace Pickles_Playlist_Editor
 
         private void PreviousButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
+            if (IsVfxPapMode) return;
             if (_selectedNode == null || _selectedNode.Level != 2) return;
             string songName = _selectedNode.Name;
             string? playlistName = _selectedNode.Parent?.Name;
@@ -50,11 +52,13 @@ namespace Pickles_Playlist_Editor
 
         private void NextButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
+            if (IsVfxPapMode) return;
             PlayNext();
         }
 
         private bool PlayNext()
         {
+            if (IsVfxPapMode) return false;
             if (_selectedNode == null || _selectedNode.Level != 2) return false;
             string songName = _selectedNode.Name;
             string? playlistName = _selectedNode.Parent?.Name;

@@ -1,16 +1,19 @@
-﻿using Microsoft.Win32;
-using Pickles_Playlist_Editor.Utils;
+using Microsoft.Win32;
+using STAGE.Tools;
+using STAGE.Utils;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
-namespace Pickles_Playlist_Editor
+namespace STAGE
 {
     public static class Settings
     {
         private static string s_valueName = "PenumbraPath";
-        private static string s_subKey = @"SOFTWARE\ScdConverter";
+        private static string s_subKey = AppEnvironment.RegistrySubKey;
         private static string[] s_defaultModNames = {
-            "Gimme Pickle's DJ Muzik, Movez, and VFX",
+            "STAGE DJ Muzik, Movez, and VFX",
             "DAMThunderdome.exe",
             "[yue's + lu's] dj",
             "[Yue & Lu's] Mega Music Mod",
@@ -61,39 +64,8 @@ namespace Pickles_Playlist_Editor
         {
             get
             {
-                string retval = (string)Registry.CurrentUser.OpenSubKey(s_subKey)?.GetValue("ModName");
-                if (string.IsNullOrWhiteSpace(retval))
-                {
-                    string penumbra = PenumbraLocation;
-                    if (!string.IsNullOrWhiteSpace(penumbra))
-                    {
-                        foreach (string defaultName in s_defaultModNames)
-                        {
-                            string potentialPath = System.IO.Path.Combine(penumbra, defaultName);
-                            if (System.IO.Directory.Exists(potentialPath))
-                            {
-                                ModName = defaultName; // save it for next time
-                                return defaultName;
-                            }
-                        }
-
-                        // Fall back: search for any directory containing "[yue & lu's]"
-                        try
-                        {
-                            foreach (string dir in System.IO.Directory.EnumerateDirectories(penumbra))
-                            {
-                                string name = System.IO.Path.GetFileName(dir);
-                                if (name.Contains("[yue & lu's]", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    ModName = name; // save it for next time
-                                    return name;
-                                }
-                            }
-                        }
-                        catch { }
-                    }
-                }
-                return retval;
+                return (string)Registry.CurrentUser.OpenSubKey(s_subKey)?.GetValue("ModName")
+                    ?? string.Empty;
             }
             set
             {
@@ -107,6 +79,142 @@ namespace Pickles_Playlist_Editor
                     }
                 }
             }
+        }
+
+        public static string ActiveModFolder
+        {
+            get
+            {
+                string parent = PenumbraLocation;
+                string name = ModName;
+                if (string.IsNullOrWhiteSpace(parent) || string.IsNullOrWhiteSpace(name))
+                    return string.Empty;
+                return Path.GetFullPath(Path.Combine(parent, name))
+                    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            }
+        }
+
+        public static string AudioModFolder => ActiveAudioModFolder;
+
+        public static string VfxModFolder => ActiveVfxModFolder;
+
+        private static string ResolveManagedModFolder(Func<string, bool> predicate, string preferredValueName)
+        {
+            string preferred = GetScopedModFolder(preferredValueName);
+            if (!string.IsNullOrWhiteSpace(preferred) && Directory.Exists(preferred))
+                return preferred;
+
+            string active = ActiveModFolder;
+            if (!string.IsNullOrWhiteSpace(active) && Directory.Exists(active))
+                return active;
+
+            foreach (string folder in ManagedModFolders)
+                if (Directory.Exists(folder) && predicate(folder))
+                    return folder;
+
+            return active;
+        }
+
+        public static string ActiveAudioModFolder
+        {
+            get => ResolveManagedModFolder(PenumbraMeta.ContainsAudioGroups, "ActiveAudioModFolder");
+            set => SetScopedModFolder("ActiveAudioModFolder", value);
+        }
+
+        public static string ActiveVfxModFolder
+        {
+            get => ResolveManagedModFolder(PenumbraMeta.ContainsVfxGroups, "ActiveVfxModFolder");
+            set => SetScopedModFolder("ActiveVfxModFolder", value);
+        }
+
+        private static string GetScopedModFolder(string valueName)
+        {
+            try
+            {
+                var value = Registry.CurrentUser.OpenSubKey(s_subKey)?.GetValue(valueName) as string;
+                return string.IsNullOrWhiteSpace(value) ? string.Empty : NormalizeModFolder(value);
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private static void SetScopedModFolder(string valueName, string path)
+        {
+            string normalized = NormalizeModFolder(path);
+            using var key = Registry.CurrentUser.CreateSubKey(s_subKey);
+            key?.SetValue(valueName, normalized);
+            AddManagedModFolder(normalized);
+        }
+
+        public static IReadOnlyList<string> ManagedModFolders
+        {
+            get
+            {
+                try
+                {
+                    var value = Registry.CurrentUser.OpenSubKey(s_subKey)?.GetValue("ManagedModFolders");
+                    if (value is string[] paths)
+                    {
+                        return paths
+                            .Where(path => !string.IsNullOrWhiteSpace(path))
+                            .Select(NormalizeModFolder)
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .ToArray();
+                    }
+                }
+                catch { }
+
+                return Array.Empty<string>();
+            }
+            set
+            {
+                string[] paths = value
+                    .Where(path => !string.IsNullOrWhiteSpace(path))
+                    .Select(NormalizeModFolder)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+                using var key = Registry.CurrentUser.CreateSubKey(s_subKey);
+                key?.SetValue("ManagedModFolders", paths, RegistryValueKind.MultiString);
+            }
+        }
+
+        public static void AddManagedModFolder(string path)
+        {
+            string normalized = NormalizeModFolder(path);
+            var paths = ManagedModFolders.ToList();
+            if (!paths.Contains(normalized, StringComparer.OrdinalIgnoreCase))
+            {
+                paths.Add(normalized);
+                ManagedModFolders = paths;
+            }
+        }
+
+        public static void SetActiveModFolder(string path)
+        {
+            string normalized = NormalizeModFolder(path);
+            string? modName = Path.GetFileName(normalized);
+            string? parent = Path.GetDirectoryName(normalized);
+            if (string.IsNullOrWhiteSpace(modName) || string.IsNullOrWhiteSpace(parent))
+                throw new ArgumentException("Select a mod folder, not a drive root.", nameof(path));
+
+            PenumbraLocation = parent;
+            ModName = modName;
+            AddManagedModFolder(normalized);
+            if (Directory.Exists(normalized))
+            {
+                if (PenumbraMeta.ContainsAudioGroups(normalized))
+                    ActiveAudioModFolder = normalized;
+                if (PenumbraMeta.ContainsVfxGroups(normalized))
+                    ActiveVfxModFolder = normalized;
+            }
+        }
+
+        private static string NormalizeModFolder(string path)
+        {
+            return Path.GetFullPath(path.Trim())
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         }
 
         public static string BaselineScdKey
@@ -181,6 +289,71 @@ namespace Pickles_Playlist_Editor
             }
         }
 
+        public static EqualizerPreset EqualizerPreset
+        {
+            get
+            {
+                try
+                {
+                    var value = Registry.CurrentUser.OpenSubKey(s_subKey)?.GetValue("EqualizerPreset", 0);
+                    int index = value is int iv ? iv : Convert.ToInt32(value);
+                    if (Enum.IsDefined(typeof(EqualizerPreset), index))
+                        return (EqualizerPreset)index;
+                }
+                catch { }
+                return EqualizerPreset.Neutral;
+            }
+            set
+            {
+                using var key = Registry.CurrentUser.CreateSubKey(s_subKey);
+                key?.SetValue("EqualizerPreset", (int)value, RegistryValueKind.DWord);
+            }
+        }
+
+        public static float ScdAudioVolume
+        {
+            get
+            {
+                try
+                {
+                    var value = Registry.CurrentUser.OpenSubKey(s_subKey)?.GetValue("ScdAudioVolume", 1.5f);
+                    float parsed = Convert.ToSingle(value, System.Globalization.CultureInfo.InvariantCulture);
+                    return Math.Clamp(parsed, 1f, 5f);
+                }
+                catch { }
+                return 1.5f;
+            }
+            set
+            {
+                using var key = Registry.CurrentUser.CreateSubKey(s_subKey);
+                key?.SetValue("ScdAudioVolume", Math.Clamp(value, 1f, 5f).ToString(
+                    System.Globalization.CultureInfo.InvariantCulture));
+            }
+        }
+
+        public static YtCookieBrowser YouTubeCookieBrowser
+        {
+            get
+            {
+                try
+                {
+                    var value = Registry.CurrentUser.OpenSubKey(s_subKey)
+                        ?.GetValue("YouTubeCookieBrowser", 0);
+                    int index = value is int iv ? iv : Convert.ToInt32(value);
+                    if (Enum.IsDefined(typeof(YtCookieBrowser), index))
+                        return (YtCookieBrowser)index;
+                }
+                catch { }
+
+                return YtCookieBrowser.None;
+            }
+            set
+            {
+                using var key = Registry.CurrentUser.CreateSubKey(s_subKey);
+                key?.SetValue("YouTubeCookieBrowser", (int)value, RegistryValueKind.DWord);
+            }
+        }
+
         /// <summary>
         /// Controls whether the mod should be auto-reloaded (Penumbra) after changes.
         /// Default: true.
@@ -242,6 +415,28 @@ namespace Pickles_Playlist_Editor
             }
         }
 
+        public static bool BpmFirstTimeMessageShown
+        {
+            get
+            {
+                try
+                {
+                    var value = Registry.CurrentUser.OpenSubKey(s_subKey)?.GetValue("BpmFirstTimeMessageShown", 0);
+                    if (value is int iv) return iv != 0;
+                    if (value is long lv) return lv != 0;
+                    if (value is string sv && bool.TryParse(sv, out var bv)) return bv;
+                    if (value is string sv2 && int.TryParse(sv2, out var parsed)) return parsed != 0;
+                }
+                catch { }
+                return false;
+            }
+            set
+            {
+                using RegistryKey key = Registry.CurrentUser.CreateSubKey(s_subKey);
+                key?.SetValue("BpmFirstTimeMessageShown", value ? 1 : 0);
+            }
+        }
+
         public static string FfmpegBuildTag
         {
             get => (string)Registry.CurrentUser.OpenSubKey(s_subKey)?.GetValue("FfmpegBuildTag", string.Empty) ?? string.Empty;
@@ -257,12 +452,27 @@ namespace Pickles_Playlist_Editor
 
         public static readonly string DefaultBackgroundImagePath = System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "PicklesPlaylistEditor", "current", "ui", "picklebackground.png");
+            AppEnvironment.LocalAppDataFolderName, "current", "ui", "stagebackground.png");
 
         public static string BackgroundImagePath
         {
-            get => (string)Registry.CurrentUser.OpenSubKey(s_subKey)?.GetValue("BackgroundImagePath", null)
-                   ?? DefaultBackgroundImagePath;
+            get
+            {
+                string? saved = null;
+                try
+                {
+                    saved = Registry.CurrentUser.OpenSubKey(s_subKey)?.GetValue("BackgroundImagePath", null) as string;
+                }
+                catch
+                {
+                    saved = null;
+                }
+
+                if (!string.IsNullOrWhiteSpace(saved) && File.Exists(saved))
+                    return saved;
+
+                return DefaultBackgroundImagePath;
+            }
             set
             {
                 using var key = Registry.CurrentUser.CreateSubKey(s_subKey);
@@ -283,6 +493,35 @@ namespace Pickles_Playlist_Editor
                     key?.DeleteValue("DefaultScdTemplateSourcePath", throwOnMissingValue: false);
                 else
                     key?.SetValue("DefaultScdTemplateSourcePath", value.Trim());
+            }
+        }
+
+        public static string DefaultDonorPapPath
+        {
+            get => (string)Registry.CurrentUser.OpenSubKey(s_subKey)?.GetValue("DefaultDonorPapPath", string.Empty) ?? string.Empty;
+            set
+            {
+                using var key = Registry.CurrentUser.CreateSubKey(s_subKey);
+                if (string.IsNullOrWhiteSpace(value))
+                    key?.DeleteValue("DefaultDonorPapPath", throwOnMissingValue: false);
+                else
+                    key?.SetValue("DefaultDonorPapPath", value.Trim());
+            }
+        }
+
+        public static int AutoBackupRetentionDays
+        {
+            get
+            {
+                object? value = Registry.CurrentUser
+                    .OpenSubKey(s_subKey)?
+                    .GetValue("AutoBackupRetentionDays", 30);
+                return value is int days ? Math.Clamp(days, 1, 3650) : 30;
+            }
+            set
+            {
+                using var key = Registry.CurrentUser.CreateSubKey(s_subKey);
+                key?.SetValue("AutoBackupRetentionDays", Math.Clamp(value, 1, 3650));
             }
         }
 

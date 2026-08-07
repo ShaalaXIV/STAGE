@@ -4,7 +4,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 
-namespace Pickles_Playlist_Editor
+namespace STAGE
 {
     public sealed partial class NewPlaylistDialog : ContentDialog
     {

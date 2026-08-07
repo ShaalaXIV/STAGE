@@ -142,7 +142,7 @@ namespace VfxEditor.ScdFormat {
 
         public void Dispose() => Audio.ForEach( x => x.Dispose() );
 
-        public static ScdFile Import(string path)
+        public static ScdFile Import(string path, bool processAudio = true)
         {
             BinaryReader reader = null;
             try
@@ -163,7 +163,7 @@ namespace VfxEditor.ScdFormat {
                 switch (Path.GetExtension(path))
                 {
                     case ".ogg":
-                        newEntry = ScdVorbis.ImportOgg(path, oldEntry);
+                        newEntry = ScdVorbis.ImportOgg(path, oldEntry, processAudio);
                         break;
                     case ".wav":
                         newEntry = ScdVorbis.ImportWav(path, oldEntry);

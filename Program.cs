@@ -1,15 +1,12 @@
 using Microsoft.UI.Xaml;
 using System;
 using System.IO;
+using System.Linq;
 
-namespace Pickles_Playlist_Editor
+namespace STAGE
 {
     internal class Program
     {
-        static readonly string CrashLogPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "PicklesPlaylistEditor", "crash.log");
-
         [STAThread]
         static void Main(string[] args)
         {
@@ -18,6 +15,26 @@ namespace Pickles_Playlist_Editor
 
             try
             {
+                try
+                {
+                    UserAssetStore.MigrateConfiguredAssets();
+                }
+                catch (Exception ex)
+                {
+                    LogCrash("User asset migration: " + ex);
+                }
+
+                try
+                {
+                    _ = ModBackupService.CleanupExpiredAutomaticBackups(
+                        Settings.ManagedModFolders,
+                        Settings.AutoBackupRetentionDays);
+                }
+                catch (Exception ex)
+                {
+                    LogCrash("Automatic backup retention: " + ex);
+                }
+
                 global::WinRT.ComWrappersSupport.InitializeComWrappers();
                 global::Microsoft.UI.Xaml.Application.Start((p) =>
                 {
@@ -44,12 +61,22 @@ namespace Pickles_Playlist_Editor
 
         static void LogCrash(string message)
         {
-            try
+            string text = $"[{DateTime.Now}]\n{message}\n";
+            string[] paths =
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(CrashLogPath)!);
-                File.WriteAllText(CrashLogPath, $"[{DateTime.Now}]\n{message}\n");
+                AppEnvironment.CrashLogPath,
+                Path.Combine(AppContext.BaseDirectory, "crash.log")
+            };
+
+            foreach (string path in paths.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                    File.WriteAllText(path, text);
+                }
+                catch { }
             }
-            catch { }
         }
     }
 }

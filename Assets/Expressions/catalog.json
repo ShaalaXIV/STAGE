@@ -1,0 +1,572 @@
+﻿{
+    "source":  "DT Facial Library Expressions",
+    "sourceUrl":  "https://docs.google.com/spreadsheets/d/1Ddck4jxeEoA5U2HI_jyplsAeOL7XUvYsaN_mqtxI8o4/edit?gid=0#gid=0",
+    "expressions":  [
+                        {
+                            "key":  "cfxf_angry_cl",
+                            "displayName":  "Angry Cl",
+                            "papName":  "angry_cl.pap",
+                            "previews":  [
+                                             "Previews/cfxf_angry_cl-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_angry_cleye",
+                            "displayName":  "Angry Cleye",
+                            "papName":  "angry_cleye.pap",
+                            "previews":  [
+                                             "Previews/cfxf_angry_cleye-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_angry_st",
+                            "displayName":  "Angry St",
+                            "papName":  "angry_st.pap",
+                            "previews":  [
+                                             "Previews/cfxf_angry_st-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_bad",
+                            "displayName":  "Bad",
+                            "papName":  "bad.pap",
+                            "previews":  [
+                                             "Previews/cfxf_bad-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_bizsmile",
+                            "displayName":  "Bizsmile",
+                            "papName":  "bizsmile.pap",
+                            "previews":  [
+                                             "Previews/cfxf_bizsmile-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_blush",
+                            "displayName":  "Blush",
+                            "papName":  "blush.pap",
+                            "previews":  [
+                                             "Previews/cfxf_blush-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_bossy",
+                            "displayName":  "Bossy",
+                            "papName":  "bossy.pap",
+                            "previews":  [
+                                             "Previews/cfxf_bossy-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_bright_cl_l",
+                            "displayName":  "Bright Cl L",
+                            "papName":  "bright_cl_l.pap",
+                            "previews":  [
+                                             "Previews/cfxf_bright_cl_l-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_bright_cl_r",
+                            "displayName":  "Bright Cl R",
+                            "papName":  "bright_cl_r.pap",
+                            "previews":  [
+                                             "Previews/cfxf_bright_cl_r-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_cheer",
+                            "displayName":  "Cheer",
+                            "papName":  "cheer.pap",
+                            "previews":  [
+                                             "Previews/cfxf_cheer-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_clench_cleye",
+                            "displayName":  "Clench Cleye",
+                            "papName":  "clench_cleye.pap",
+                            "previews":  [
+                                             "Previews/cfxf_clench_cleye-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_clench_st",
+                            "displayName":  "Clench St",
+                            "papName":  "clench_st.pap",
+                            "previews":  [
+                                             "Previews/cfxf_clench_st-1.png",
+                                             "Previews/cfxf_clench_st-2.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_complain",
+                            "displayName":  "Complain",
+                            "papName":  "complain.pap",
+                            "previews":  [
+                                             "Previews/cfxf_complain-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_cry",
+                            "displayName":  "Cry",
+                            "papName":  "cry.pap",
+                            "previews":  [
+                                             "Previews/cfxf_cry-1.png",
+                                             "Previews/cfxf_cry-2.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_doubtful",
+                            "displayName":  "Doubtful",
+                            "papName":  "doubtful.pap",
+                            "previews":  [
+                                             "Previews/cfxf_doubtful-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_downcast",
+                            "displayName":  "Downcast",
+                            "papName":  "downcast.pap",
+                            "previews":  [
+                                             "Previews/cfxf_downcast-1.png",
+                                             "Previews/cfxf_downcast-2.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_emot_eeh",
+                            "displayName":  "Eeh",
+                            "papName":  "eeh.pap",
+                            "previews":  [
+                                             "Previews/cfxf_emot_eeh-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_f_distrust",
+                            "displayName":  "F Distrust",
+                            "papName":  "f_distrust.pap",
+                            "previews":  [
+                                             "Previews/cfxf_f_distrust-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_f_hate",
+                            "displayName":  "F Hate",
+                            "papName":  "f_hate.pap",
+                            "previews":  [
+                                             "Previews/cfxf_f_hate-1.png",
+                                             "Previews/cfxf_f_hate-2.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_f_puzzled",
+                            "displayName":  "F Puzzled",
+                            "papName":  "f_puzzled.pap",
+                            "previews":  [
+                                             "Previews/cfxf_f_puzzled-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_f_scornful",
+                            "displayName":  "F Scornful",
+                            "papName":  "f_scornful.pap",
+                            "previews":  [
+                                             "Previews/cfxf_f_scornful-1.png",
+                                             "Previews/cfxf_f_scornful-2.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_f_sorry",
+                            "displayName":  "F Sorry",
+                            "papName":  "f_sorry.pap",
+                            "previews":  [
+                                             "Previews/cfxf_f_sorry-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_f_umm",
+                            "displayName":  "F Umm",
+                            "papName":  "f_umm.pap",
+                            "previews":  [
+                                             "Previews/cfxf_f_umm-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_f_upset",
+                            "displayName":  "F Upset",
+                            "papName":  "f_upset.pap",
+                            "previews":  [
+                                             "Previews/cfxf_f_upset-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_fear",
+                            "displayName":  "Fear",
+                            "papName":  "fear.pap",
+                            "previews":  [
+                                             "Previews/cfxf_fear-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_fear_cl",
+                            "displayName":  "Fear Cl",
+                            "papName":  "fear_cl.pap",
+                            "previews":  [
+                                             "Previews/cfxf_fear_cl-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_flash",
+                            "displayName":  "Flash",
+                            "papName":  "flash.pap",
+                            "previews":  [
+                                             "Previews/cfxf_flash-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_freeze",
+                            "displayName":  "Freeze",
+                            "papName":  "freeze.pap",
+                            "previews":  [
+                                             "Previews/cfxf_freeze-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_frightened",
+                            "displayName":  "Frightened",
+                            "papName":  "frightened.pap",
+                            "previews":  [
+                                             "Previews/cfxf_frightened-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_frustrated",
+                            "displayName":  "Frustrated",
+                            "papName":  "frustrated.pap",
+                            "previews":  [
+                                             "Previews/cfxf_frustrated-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_happysmile",
+                            "displayName":  "Happysmile",
+                            "papName":  "happysmile.pap",
+                            "previews":  [
+                                             "Previews/cfxf_happysmile-1.png",
+                                             "Previews/cfxf_happysmile-2.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_hazysmile",
+                            "displayName":  "Hazysmile",
+                            "papName":  "hazysmile.pap",
+                            "previews":  [
+                                             "Previews/cfxf_hazysmile-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_ho",
+                            "displayName":  "Ho",
+                            "papName":  "ho.pap",
+                            "previews":  [
+                                             "Previews/cfxf_ho-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_kiss",
+                            "displayName":  "Kiss",
+                            "papName":  "kiss.pap",
+                            "previews":  [
+                                             "Previews/cfxf_kiss-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_laugh",
+                            "displayName":  "Laugh",
+                            "papName":  "laugh.pap",
+                            "previews":  [
+                                             "Previews/cfxf_laugh-1.png",
+                                             "Previews/cfxf_laugh-2.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_laugh_cl",
+                            "displayName":  "Laugh Cl",
+                            "papName":  "laugh_cl.pap",
+                            "previews":  [
+                                             "Previews/cfxf_laugh_cl-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_laugh_st",
+                            "displayName":  "Laugh St",
+                            "papName":  "laugh_st.pap",
+                            "previews":  [
+                                             "Previews/cfxf_laugh_st-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_eat_paku",
+                            "displayName":  "Eat Paku",
+                            "papName":  "",
+                            "previews":  [
+                                             "Previews/cfxf_eat_paku-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_oho",
+                            "displayName":  "Oho",
+                            "papName":  "oho.pap",
+                            "previews":  [
+                                             "Previews/cfxf_oho-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_ouch",
+                            "displayName":  "Ouch",
+                            "papName":  "ouch.pap",
+                            "previews":  [
+                                             "Previews/cfxf_ouch-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_painful",
+                            "displayName":  "Painful",
+                            "papName":  "painful.pap",
+                            "previews":  [
+                                             "Previews/cfxf_painful-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_pant",
+                            "displayName":  "Pant",
+                            "papName":  "pant.pap",
+                            "previews":  [
+                                             "Previews/cfxf_pant-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_pant_cl",
+                            "displayName":  "Pant Cl",
+                            "papName":  "pant_cl.pap",
+                            "previews":  [
+                                             "Previews/cfxf_pant_cl-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_praise",
+                            "displayName":  "Praise",
+                            "papName":  "praise.pap",
+                            "previews":  [
+                                             "Previews/cfxf_praise-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_praise_cl",
+                            "displayName":  "Praise Cl",
+                            "papName":  "praise_cl.pap",
+                            "previews":  [
+                                             "Previews/cfxf_praise_cl-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_prettyplease",
+                            "displayName":  "Prettyplease",
+                            "papName":  "prettyplease.pap",
+                            "previews":  [
+                                             "Previews/cfxf_prettyplease-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_relieved",
+                            "displayName":  "Relieved",
+                            "papName":  "relieved.pap",
+                            "previews":  [
+                                             "Previews/cfxf_relieved-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_satisfied",
+                            "displayName":  "Satisfied",
+                            "papName":  "satisfied.pap",
+                            "previews":  [
+                                             "Previews/cfxf_satisfied-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_scowl",
+                            "displayName":  "Scowl",
+                            "papName":  "scowl.pap",
+                            "previews":  [
+                                             "Previews/cfxf_scowl-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_shock",
+                            "displayName":  "Shock",
+                            "papName":  "shock.pap",
+                            "previews":  [
+                                             "Previews/cfxf_shock-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_shock_cl",
+                            "displayName":  "Shock Cl",
+                            "papName":  "shock_cl.pap",
+                            "previews":  [
+                                             "Previews/cfxf_shock_cl-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_sleep",
+                            "displayName":  "Sleep",
+                            "papName":  "sleep.pap",
+                            "previews":  [
+                                             "Previews/cfxf_sleep-1.png",
+                                             "Previews/cfxf_sleep-2.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_smile",
+                            "displayName":  "Smile",
+                            "papName":  "smile.pap",
+                            "previews":  [
+                                             "Previews/cfxf_smile-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_smile_st",
+                            "displayName":  "Smile St",
+                            "papName":  "smile_st.pap",
+                            "previews":  [
+                                             "Previews/cfxf_smile_st-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_emot_sparkeyes",
+                            "displayName":  "Sparkeyes",
+                            "papName":  "sparkeyes.pap",
+                            "previews":  [
+                                             "Previews/cfxf_emot_sparkeyes-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_spewing",
+                            "displayName":  "Spewing",
+                            "papName":  "spewing.pap",
+                            "previews":  [
+                                             "Previews/cfxf_spewing-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_struggle",
+                            "displayName":  "Struggle",
+                            "papName":  "struggle.pap",
+                            "previews":  [
+                                             "Previews/cfxf_struggle-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_stunned",
+                            "displayName":  "Stunned",
+                            "papName":  "stunned.pap",
+                            "previews":  [
+                                             "Previews/cfxf_stunned-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_sulk",
+                            "displayName":  "Sulk",
+                            "papName":  "sulk.pap",
+                            "previews":  [
+                                             "Previews/cfxf_sulk-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_surprised_cl",
+                            "displayName":  "Surprised Cl",
+                            "papName":  "surprised_cl.pap",
+                            "previews":  [
+                                             "Previews/cfxf_surprised_cl-1.png",
+                                             "Previews/cfxf_surprised_cl-2.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_surprised_wk",
+                            "displayName":  "Surprised Wk",
+                            "papName":  "surprised_wk.pap",
+                            "previews":  [
+                                             "Previews/cfxf_surprised_wk-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_think_cleye",
+                            "displayName":  "Think Cleye",
+                            "papName":  "think_cleye.pap",
+                            "previews":  [
+                                             "Previews/cfxf_think_cleye-1.png",
+                                             "Previews/cfxf_think_cleye-2.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_toobright_l",
+                            "displayName":  "Toobright L",
+                            "papName":  "toobright_l.pap",
+                            "previews":  [
+                                             "Previews/cfxf_toobright_l-1.png",
+                                             "Previews/cfxf_toobright_l-2.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_toobright_r",
+                            "displayName":  "Toobright R",
+                            "papName":  "toobright_r.pap",
+                            "previews":  [
+                                             "Previews/cfxf_toobright_r-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_uh",
+                            "displayName":  "Uh",
+                            "papName":  "uh.pap",
+                            "previews":  [
+                                             "Previews/cfxf_uh-1.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_what2",
+                            "displayName":  "What2",
+                            "papName":  "what2.pap",
+                            "previews":  [
+                                             "Previews/cfxf_what2-1.png",
+                                             "Previews/cfxf_what2-2.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_wink",
+                            "displayName":  "Wink",
+                            "papName":  "wink.pap",
+                            "previews":  [
+                                             "Previews/cfxf_wink-1.png",
+                                             "Previews/cfxf_wink-2.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_worry",
+                            "displayName":  "Worry",
+                            "papName":  "worry.pap",
+                            "previews":  [
+                                             "Previews/cfxf_worry-1.png",
+                                             "Previews/cfxf_worry-2.png"
+                                         ]
+                        },
+                        {
+                            "key":  "cfxf_wrysmile",
+                            "displayName":  "Wrysmile",
+                            "papName":  "System.Xml.XmlElement",
+                            "previews":  [
+                                             "Previews/cfxf_wrysmile-1.png"
+                                         ]
+                        }
+                    ]
+}

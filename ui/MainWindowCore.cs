@@ -2,20 +2,43 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Dispatching;
-using Pickles_Playlist_Editor.Utils;
+using STAGE.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
-namespace Pickles_Playlist_Editor
+namespace STAGE
 {
     public sealed partial class MainWindow
     {
         private bool _busyOverlayVisible;
         private readonly Dictionary<string, bool> _playlistExpandedStates = new();
         private Storyboard? _spinnerStoryboard;
+        private CancellationTokenSource? _bpmScanCancellation;
+        private int _playlistLoadGeneration;
+
+        private bool IsVfxPapMode => _contentMode == MainContentMode.VfxPap;
+
+        private void LoadCurrentContent() => LoadCurrentContent(SearchTextBox.Text?.Trim() ?? string.Empty);
+
+        private void LoadCurrentContentDeferredAudioMetadata() =>
+            LoadCurrentContent(SearchTextBox.Text?.Trim() ?? string.Empty, deferAudioMetadata: true);
+
+        private void LoadCurrentContentDeferredAudioMetadata(string filter) =>
+            LoadCurrentContent(filter, deferAudioMetadata: true);
+
+        private void LoadCurrentContent(string filter) => LoadCurrentContent(filter, deferAudioMetadata: false);
+
+        private void LoadCurrentContent(string filter, bool deferAudioMetadata)
+        {
+            if (IsVfxPapMode)
+                LoadVfxPapGroups(filter);
+            else
+                LoadPlaylists(filter, null, deferAudioMetadata);
+        }
 
         public void LoadPlaylists() => LoadPlaylists(string.Empty);
 
@@ -23,11 +46,14 @@ namespace Pickles_Playlist_Editor
 
         public void LoadPlaylists(string filter) => LoadPlaylists(filter, null);
 
-        private void LoadPlaylists(string filter, string? forceExpandedPlaylistName)
+        private void LoadPlaylists(string filter, string? forceExpandedPlaylistName) =>
+            LoadPlaylists(filter, forceExpandedPlaylistName, deferAudioMetadata: false);
+
+        private void LoadPlaylists(string filter, string? forceExpandedPlaylistName, bool deferAudioMetadata)
         {
             if (!DispatcherQueue.HasThreadAccess)
             {
-                DispatcherQueue.TryEnqueue(() => LoadPlaylists(filter, forceExpandedPlaylistName));
+                DispatcherQueue.TryEnqueue(() => LoadPlaylists(filter, forceExpandedPlaylistName, deferAudioMetadata));
                 return;
             }
 
@@ -40,15 +66,28 @@ namespace Pickles_Playlist_Editor
 
             try
             {
-                Playlists = Playlist.GetAll();
+                _bpmScanCancellation?.Cancel();
+                _bpmScanCancellation?.Dispose();
+                _bpmScanCancellation = null;
+                int loadGeneration = ++_playlistLoadGeneration;
 
-                bool skipDurationComputation = false;
-                if (BPMDetector.IsFirstTimeMessage())
+                var loadedPlaylists = Playlist.GetAll()
+                    .Where(pair => VfxPapGroup.IsAudioPlaylistGroup(pair.Value))
+                    .ToList();
+                if (BaselineScdDetector.TryApplyFromPlaylists(
+                    loadedPlaylists.Select(pair => pair.Value), out string detectedBaseline))
                 {
-                    BPMDetector.MarkFirstTimeMessageShown();
-                    skipDurationComputation = true;
+                    App.WriteStartupText(
+                        "Baseline SCD auto-detected",
+                        "BaselineScdKey: " + detectedBaseline);
+                }
+                Playlists = loadedPlaylists.ToDictionary(pair => pair.Key, pair => pair.Value);
+                var missingAudioPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                if (!Settings.BpmFirstTimeMessageShown)
+                {
+                    Settings.BpmFirstTimeMessageShown = true;
                     _ = ShowDialogAsync(AppStrings.Dlg_BPMDetection_Title, AppStrings.Dlg_BPMDetection_Content);
-                    _ = RecomputePlaylistDurationsAsync();
                 }
 
                 RootPlaylistItems.Clear();
@@ -88,15 +127,24 @@ namespace Pickles_Playlist_Editor
                         try
                         {
                             TimeSpan time = TimeSpan.Zero;
-                            if (!skipDurationComputation && !string.IsNullOrEmpty(Playlist.GetScdPath(song)))
+                            bool hasDuration = false;
+                            int bpm = 0;
+                            bool hasBpm = false;
+                            string scdPath = Playlist.GetScdPath(song);
+                            if (!string.IsNullOrEmpty(scdPath))
                             {
-                                time = BPMDetector.GetDuration(Playlist.GetScdPath(song));
-                                playlistTime = playlistTime.Add(time);
+                                string fullScdPath = Playlist.GetFullScdPath(scdPath);
+                                hasDuration = BPMDetector.TryGetCachedDuration(fullScdPath, out time);
+                                hasBpm = BPMDetector.TryGetCachedBPM(fullScdPath, out bpm);
+                                if (hasDuration)
+                                    playlistTime = playlistTime.Add(time);
+                                if (!hasBpm && File.Exists(fullScdPath))
+                                    missingAudioPaths.Add(fullScdPath);
                             }
 
                             string displayText = song.Name
-                                + (skipDurationComputation ? "" : GetBPMString(song))
-                                + GetTimeString(time);
+                                + GetBPMString(hasBpm, bpm)
+                                + (hasDuration ? GetTimeString(time) : string.Empty);
 
                             var songContent = new PlaylistNodeContent
                             {
@@ -147,6 +195,17 @@ namespace Pickles_Playlist_Editor
 
                     rootContent.AddChild(playlistContent);
                 }
+
+                if (missingAudioPaths.Count > 0)
+                {
+                    _bpmScanCancellation = new CancellationTokenSource();
+                    _ = QueueMissingAudioAnalysisAsync(
+                        missingAudioPaths.ToList(),
+                        filter,
+                        forceExpandedPlaylistName,
+                        loadGeneration,
+                        _bpmScanCancellation.Token);
+                }
             }
             catch (Exception ex)
             {
@@ -154,96 +213,221 @@ namespace Pickles_Playlist_Editor
             }
         }
 
-        private void RecomputePlaylistDurations(bool checkUI = true)
+        private async Task QueueMissingAudioAnalysisAsync(
+            IReadOnlyList<string> scdPaths,
+            string filter,
+            string? forceExpandedPlaylistName,
+            int loadGeneration,
+            CancellationToken cancellationToken)
         {
-            if (RootPlaylistItems.Count == 0) return;
-
-            foreach (var playlist in Playlists.Values)
+            bool cachedAny = false;
+            try
             {
-                var playlistContent = FindPlaylistNode(playlist.Name);
-                if (checkUI && playlistContent == null) continue;
-                if (playlistContent == null) continue;
-
-                TimeSpan playlistTime = TimeSpan.Zero;
-                if (playlist.Options == null) continue;
-
-                foreach (var song in playlist.Options)
+                foreach (string scdPath in scdPaths)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     try
                     {
-                        if (!string.IsNullOrEmpty(Playlist.GetScdPath(song)))
-                            playlistTime = playlistTime.Add(BPMDetector.GetDuration(Playlist.GetScdPath(song)));
-                    }
-                    catch (Exception ex)
-                    {
-                        _ = ShowDialogAsync(AppStrings.Dlg_Error, AppStrings.ErrorLoadingSong(song.Name, playlist.Name, ex.Message));
-                    }
-                }
-
-                SetNodeDisplayText(playlistContent, playlist.Name + GetTimeString(playlistTime));
-            }
-
-            if (!checkUI)
-                LoadPlaylists();
-        }
-
-        private Task RecomputePlaylistDurationsAsync()
-        {
-            var playlistScdPaths = new List<List<string>>();
-            var playlists = Playlist.GetAll();
-            foreach (var playlist in playlists.Values)
-            {
-                var files = new List<string>();
-                if (playlist.Options != null)
-                {
-                    foreach (var opt in playlist.Options)
-                    {
-                        var scdPath = Playlist.GetScdPath(opt);
-                        if (!string.IsNullOrEmpty(scdPath))
-                            files.Add(Path.Combine(Settings.PenumbraLocation, Settings.ModName, scdPath));
-                    }
-                }
-                playlistScdPaths.Add(files);
-            }
-
-            return Task.Run(() =>
-            {
-                try
-                {
-                    SetProgressBarText(AppStrings.Prog_ComputingDurations);
-                    int totalFiles = playlistScdPaths.Sum(l => l.Count);
-                    int filesProcessed = 0;
-
-                    foreach (var fileList in playlistScdPaths)
-                    {
-                        foreach (var scd in fileList)
+                        if (File.Exists(scdPath))
                         {
-                            try
-                            {
-                                BPMDetector.GetDuration(scd);
-                                filesProcessed++;
-                                SetProgressBarPercent((int)(filesProcessed / (double)totalFiles * 100));
-                            }
-                            catch { }
+                            await BPMDetector.AnalyzeQueuedAsync(scdPath, cancellationToken);
+                            cachedAny |= BPMDetector.TryGetCachedBPM(scdPath, out _);
                         }
                     }
-                }
-                finally
-                {
-                    DispatcherQueue.TryEnqueue(() =>
+                    catch (OperationCanceledException)
                     {
-                        RecomputePlaylistDurations(false);
-                        ClearProgressDisplay();
-                    });
+                        throw;
+                    }
+                    catch
+                    {
+                        // One unreadable track should not stop the rest of the queue.
+                    }
                 }
-            });
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch
+            {
+                return;
+            }
+
+            if (cachedAny && !cancellationToken.IsCancellationRequested && loadGeneration == _playlistLoadGeneration)
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    if (loadGeneration == _playlistLoadGeneration)
+                        if (!IsVfxPapMode)
+                            LoadPlaylists(filter, forceExpandedPlaylistName);
+                });
+            }
         }
 
-        private string GetBPMString(Option song)
+        private void LoadVfxPapGroups(string filter)
         {
-            string scdPath = Playlist.GetScdPath(song);
-            if (string.IsNullOrEmpty(scdPath)) return string.Empty;
-            return " (" + BPMDetector.GetBPMFromSCD(scdPath) + " BPM)";
+            if (!DispatcherQueue.HasThreadAccess)
+            {
+                DispatcherQueue.TryEnqueue(() => LoadVfxPapGroups(filter));
+                return;
+            }
+
+            try
+            {
+                _bpmScanCancellation?.Cancel();
+                _bpmScanCancellation?.Dispose();
+                _bpmScanCancellation = null;
+                ++_playlistLoadGeneration;
+
+                RootPlaylistItems.Clear();
+
+                var rootContent = new PlaylistNodeContent
+                {
+                    Name = "VFX / PAP",
+                    DisplayText = "VFX / PAP",
+                    Level = 0,
+                    IconGlyph = PlaylistNodeContent.RootGlyph,
+                    IsExpanded = true
+                };
+                RootPlaylistItems.Add(rootContent);
+
+                var groups = VfxPapGroup.GetAll();
+                AddVfxPapCategory(rootContent, "Animations", VfxPapGroupKind.Animation, groups, filter);
+                AddVfxPapCategory(rootContent, "Color Variants", VfxPapGroupKind.ColorVariant, groups, filter);
+                AddVfxPapCategory(rootContent, "VFX Slots", VfxPapGroupKind.VfxSlot, groups, filter);
+                AddVfxPapCategory(rootContent, "Other", VfxPapGroupKind.Other, groups, filter);
+            }
+            catch (Exception ex)
+            {
+                _ = ShowDialogAsync(AppStrings.Dlg_Error, $"Error loading VFX/PAP groups: {ex.Message}");
+            }
+        }
+
+        private static void AddVfxPapCategory(
+            PlaylistNodeContent rootContent,
+            string categoryName,
+            VfxPapGroupKind kind,
+            IReadOnlyList<VfxPapGroup> groups,
+            string filter)
+        {
+            var categoryContent = new PlaylistNodeContent
+            {
+                Name = categoryName,
+                DisplayText = categoryName,
+                Level = 1,
+                IconGlyph = kind == VfxPapGroupKind.Animation ? PlaylistNodeContent.PapGlyph : PlaylistNodeContent.VfxGlyph,
+                AssetKind = kind.ToString(),
+                IsExpanded = true
+            };
+
+            foreach (var group in groups.Where(group => group.Kind == kind))
+            {
+                var groupContent = new PlaylistNodeContent
+                {
+                    Name = group.Name,
+                    DisplayText = $"{group.Name} ({group.Options.Count} options)",
+                    Level = 2,
+                    IconGlyph = kind == VfxPapGroupKind.Animation ? PlaylistNodeContent.PapGlyph : PlaylistNodeContent.VfxGlyph,
+                    AssetKind = kind.ToString(),
+                    SourceJsonPath = group.FilePath,
+                    IsExpanded = false
+                };
+
+                bool groupMatches = MatchesFilter(group.Name, filter);
+                foreach (var option in group.Options)
+                {
+                    string optionName = option.Name ?? "";
+                    bool optionMatches = groupMatches || MatchesFilter(optionName, filter) || OptionMappingsMatch(option, filter);
+                    if (!optionMatches && !string.IsNullOrWhiteSpace(filter))
+                        continue;
+
+                    var optionContent = new PlaylistNodeContent
+                    {
+                        Name = optionName,
+                        DisplayText = BuildVfxPapOptionText(option),
+                        Level = 3,
+                        IconGlyph = PlaylistNodeContent.OptionGlyph,
+                        AssetKind = kind.ToString(),
+                        SourceJsonPath = group.FilePath,
+                        IsExpanded = false
+                    };
+
+                    if (option.Files != null)
+                    {
+                        foreach (var mapping in option.Files.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
+                        {
+                            if (!string.IsNullOrWhiteSpace(filter) &&
+                                !groupMatches &&
+                                !MatchesFilter(optionName, filter) &&
+                                !MatchesFilter(mapping.Key, filter) &&
+                                !MatchesFilter(mapping.Value, filter))
+                            {
+                                continue;
+                            }
+
+                            optionContent.AddChild(new PlaylistNodeContent
+                            {
+                                Name = mapping.Key,
+                                DisplayText = $"{mapping.Key} -> {mapping.Value}",
+                                Level = 4,
+                                IconGlyph = PlaylistNodeContent.OptionGlyph,
+                                AssetKind = kind.ToString(),
+                                SourceJsonPath = group.FilePath,
+                                AssetGamePath = mapping.Key,
+                                AssetLocalPath = mapping.Value
+                            });
+                        }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(filter) && optionContent.Children.Count > 0)
+                        optionContent.IsExpanded = true;
+
+                    groupContent.AddChild(optionContent);
+                }
+
+                if (!string.IsNullOrWhiteSpace(filter) && groupContent.Children.Count == 0 && !groupMatches)
+                    continue;
+
+                if (!string.IsNullOrWhiteSpace(filter))
+                    groupContent.IsExpanded = true;
+
+                categoryContent.AddChild(groupContent);
+            }
+
+            if (categoryContent.Children.Count > 0)
+                rootContent.AddChild(categoryContent);
+        }
+
+        private static bool MatchesFilter(string value, string filter)
+        {
+            return string.IsNullOrWhiteSpace(filter) ||
+                   value.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool OptionMappingsMatch(Option option, string filter)
+        {
+            return string.IsNullOrWhiteSpace(filter) ||
+                   option.Files?.Any(pair =>
+                       MatchesFilter(pair.Key, filter) ||
+                       MatchesFilter(pair.Value, filter)) == true;
+        }
+
+        private static string BuildVfxPapOptionText(Option option)
+        {
+            int fileCount = option.Files?.Count ?? 0;
+            return fileCount == 0
+                ? option.Name
+                : $"{option.Name} ({fileCount} file{(fileCount == 1 ? "" : "s")})";
+        }
+
+        private void RecomputePlaylistDurations(bool checkUI = true)
+        {
+            LoadPlaylists();
+        }
+
+        private static string GetBPMString(bool hasBpm, int bpm)
+        {
+            return hasBpm ? " (" + bpm + " BPM)" : string.Empty;
         }
 
         private static string GetTimeString(TimeSpan time)
@@ -267,10 +451,9 @@ namespace Pickles_Playlist_Editor
             if (percent > 0 || !string.IsNullOrWhiteSpace(ProgressLabel.Text))
                 SetBusyOverlayVisible(true);
 
-            if (percent == 100)
-            {
-                ClearProgressDisplay();
-            }
+            // Long operations may still be saving JSON, refreshing playlists, or showing
+            // summaries after reporting 100%. Call ClearProgressDisplay explicitly when
+            // the whole operation is actually done.
         }
 
         public void SetProgressBarText(string text)
@@ -345,6 +528,9 @@ namespace Pickles_Playlist_Editor
         {
             try
             {
+                if (IsVfxPapMode)
+                    return await DeleteSelectedVfxPapNodesAsync();
+
                 var result = await ShowDialogAsync(
                     AppStrings.Dlg_ConfirmDelete_Title,
                     AppStrings.Dlg_ConfirmDelete_Content,
@@ -386,12 +572,15 @@ namespace Pickles_Playlist_Editor
 
                                 if (!string.IsNullOrWhiteSpace(scdPath))
                                 {
-                                    string fullSongPath = Path.Combine(Settings.PenumbraLocation, Settings.ModName, scdPath);
+                                    string fullSongPath = Playlist.GetFullScdPath(scdPath);
                                     if (File.Exists(fullSongPath))
                                         File.Delete(fullSongPath);
+                                    string baselinePath = fullSongPath + ".stage-audio-baseline";
+                                    if (File.Exists(baselinePath))
+                                        File.Delete(baselinePath);
 
                                     string? containingDir = Path.GetDirectoryName(fullSongPath);
-                                    string playlistDir = Path.Combine(Settings.PenumbraLocation, Settings.ModName, parentPl.Name);
+                                    string playlistDir = Playlist.GetPlaylistDirectory(parentPl.Name);
                                     if (!string.IsNullOrWhiteSpace(containingDir) &&
                                         containingDir.StartsWith(playlistDir, StringComparison.OrdinalIgnoreCase) &&
                                         Directory.Exists(containingDir) &&

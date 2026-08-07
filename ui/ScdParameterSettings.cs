@@ -1,6 +1,6 @@
 using VfxEditor.ScdFormat;
 
-namespace Pickles_Playlist_Editor
+namespace STAGE
 {
     public sealed class ScdParameterSettings
     {

@@ -1,7 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace Pickles_Playlist_Editor
+namespace STAGE
 {
     public sealed partial class ScdParametersDialog : ContentDialog
     {

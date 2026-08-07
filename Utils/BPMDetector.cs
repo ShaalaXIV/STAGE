@@ -1,21 +1,25 @@
-﻿using libZPlay;
+using libZPlay;
 using PersistentCollection;
-using Pickles_Playlist_Editor.Tools;
+using STAGE.Tools;
 using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace Pickles_Playlist_Editor.Utils
+namespace STAGE.Utils
 {
     internal class BPMDetector
     {
         private static readonly string s_dataDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            "Pickles Playlist Editor");
+            "S.T.A.G.E.");
 
         private static PersistentDictionary<string, int> bpmCache = new PersistentDictionary<string, int>(
             Path.Combine(EnsureDataDir(), "bpm_cache.dat"));
         private static PersistentDictionary<string, int> durationCache = new PersistentDictionary<string, int>(
             Path.Combine(s_dataDir, "duration_cache.dat"));
+        private static readonly object s_cacheLock = new();
+        private static readonly SemaphoreSlim s_analysisGate = new(1, 1);
 
         private static string EnsureDataDir()
         {
@@ -25,19 +29,25 @@ namespace Pickles_Playlist_Editor.Utils
 
         internal static bool IsFirstTimeMessage()
         {
-            try
+            lock (s_cacheLock)
             {
-                return bpmCache["FIRST_TIME_MESSAGE_SHOWN"] != 7;
-            }
-            catch
-            {
-                return true;
+                try
+                {
+                    return bpmCache["FIRST_TIME_MESSAGE_SHOWN"] != 7;
+                }
+                catch
+                {
+                    return true;
+                }
             }
         }
 
         internal static void MarkFirstTimeMessageShown()
         {
-            bpmCache["FIRST_TIME_MESSAGE_SHOWN"] = 7;
+            lock (s_cacheLock)
+            {
+                bpmCache["FIRST_TIME_MESSAGE_SHOWN"] = 7;
+            }
         }
 
         private struct SongAttributes
@@ -103,82 +113,163 @@ namespace Pickles_Playlist_Editor.Utils
             }
         }
 
-        public static TimeSpan GetDuration(string scdFile)
+        private static string ResolveScdPath(string scdFile)
         {
-            try
+            if (Path.IsPathRooted(scdFile))
+                return Path.GetFullPath(scdFile);
+
+            return Path.GetFullPath(Path.Combine(Settings.PenumbraLocation, Settings.ModName, scdFile));
+        }
+
+        public static bool TryGetCachedDuration(string scdFile, out TimeSpan duration)
+        {
+            string path = ResolveScdPath(scdFile);
+            lock (s_cacheLock)
             {
-                string path = Path.Combine(Settings.PenumbraLocation, Settings.ModName, scdFile);
                 if (durationCache.ContainsKey(path))
                 {
-                    return new TimeSpan(0, 0, durationCache[path]);
+                    duration = TimeSpan.FromSeconds(durationCache[path]);
+                    return true;
                 }
-                else
-                {
-                    string tmpOgg = Path.Combine(System.IO.Path.GetTempPath(), "temp_extracted.ogg");
-                    try
-                    {
-                        ScdOggExtractor.ExtractOgg(path, tmpOgg);
-                        SongAttributes retval = GetAttribtesFromFile(tmpOgg);
-                        bpmCache[path] = retval.BPM;
-                        durationCache[path] = (int)retval.Duration.TotalSeconds;
+            }
 
-                        return retval.Duration;
-                    }
-                    catch
-                    {
-                        return new TimeSpan(0);
-                    }
+            duration = TimeSpan.Zero;
+            return false;
+        }
+
+        public static bool TryGetCachedBPM(string scdFile, out int bpm)
+        {
+            string path = ResolveScdPath(scdFile);
+            lock (s_cacheLock)
+            {
+                if (bpmCache.ContainsKey(path))
+                {
+                    bpm = bpmCache[path];
+                    return true;
                 }
+            }
+
+            bpm = 0;
+            return false;
+        }
+
+        private static SongAttributes AnalyzeFile(string path)
+        {
+            string tmpOgg = Path.Combine(Path.GetTempPath(), $"stage-bpm-{Guid.NewGuid():N}.ogg");
+            try
+            {
+                ScdOggExtractor.ExtractOgg(path, tmpOgg);
+                SongAttributes attributes = GetAttribtesFromFile(tmpOgg);
+                lock (s_cacheLock)
+                {
+                    bpmCache[path] = attributes.BPM;
+                    durationCache[path] = (int)attributes.Duration.TotalSeconds;
+                }
+                return attributes;
+            }
+            finally
+            {
+                try
+                {
+                    if (File.Exists(tmpOgg))
+                        File.Delete(tmpOgg);
+                }
+                catch
+                {
+                    // A failed temp cleanup should not fail the audio scan.
+                }
+            }
+        }
+
+        public static async Task AnalyzeQueuedAsync(string scdFile, CancellationToken cancellationToken)
+        {
+            string path = ResolveScdPath(scdFile);
+            if (TryGetCachedBPM(path, out _))
+                return;
+
+            await s_analysisGate.WaitAsync(cancellationToken);
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!TryGetCachedBPM(path, out _))
+                    await Task.Run(() => AnalyzeFile(path), cancellationToken);
+            }
+            finally
+            {
+                s_analysisGate.Release();
+            }
+
+            await Task.Delay(75, cancellationToken);
+        }
+
+        public static TimeSpan GetDuration(string scdFile)
+        {
+            string path = ResolveScdPath(scdFile);
+            if (TryGetCachedDuration(path, out TimeSpan duration))
+                return duration;
+
+            s_analysisGate.Wait();
+            try
+            {
+                if (TryGetCachedDuration(path, out duration))
+                    return duration;
+                return AnalyzeFile(path).Duration;
             }
             catch (Exception ex)
             {
                 Console.Error.WriteLine(ex.ToString());
-                return new TimeSpan(0);
+                return TimeSpan.Zero;
+            }
+            finally
+            {
+                s_analysisGate.Release();
             }
         }
 
         public static void UpdateCacheForSCD(string oldFullPath, string newFullPath)
         {
-            try
+            lock (s_cacheLock)
             {
-                if (bpmCache.ContainsKey(oldFullPath))
+                try
                 {
-                    bpmCache[newFullPath] = bpmCache[oldFullPath];
-                    bpmCache.Remove(oldFullPath);
+                    if (bpmCache.ContainsKey(oldFullPath))
+                    {
+                        bpmCache[newFullPath] = bpmCache[oldFullPath];
+                        bpmCache.Remove(oldFullPath);
+                    }
+                    if (durationCache.ContainsKey(oldFullPath))
+                    {
+                        durationCache[newFullPath] = durationCache[oldFullPath];
+                        durationCache.Remove(oldFullPath);
+                    }
                 }
-                if (durationCache.ContainsKey(oldFullPath))
+                catch
                 {
-                    durationCache[newFullPath] = durationCache[oldFullPath];
-                    durationCache.Remove(oldFullPath);
+                    // Ignore cache update failures.
                 }
-            }
-            catch (Exception ex)
-            {
-                // ignore cache update failures
             }
         }
 
         public static int GetBPMFromSCD(string scdFile)
         {
+            string path = ResolveScdPath(scdFile);
+            if (TryGetCachedBPM(path, out int bpm))
+                return bpm;
+
+            s_analysisGate.Wait();
             try
             {
-                string path = Path.Combine(Settings.PenumbraLocation, Settings.ModName, scdFile);
-
-                if (bpmCache.ContainsKey(path))
-                {
-                    return bpmCache[path];
-                }
-
-                string tmpOgg = Path.Combine(System.IO.Path.GetTempPath(), "temp_extracted.ogg");
-                ScdOggExtractor.ExtractOgg(path, tmpOgg);
-                SongAttributes retval = GetAttribtesFromFile(tmpOgg);
-                bpmCache[path] = retval.BPM;
-                durationCache[path] = (int)retval.Duration.TotalSeconds;
-                return retval.BPM;
+                if (TryGetCachedBPM(path, out bpm))
+                    return bpm;
+                return AnalyzeFile(path).BPM;
             }
-            catch (Exception ex)
+            catch
             {
                 return 0;
+            }
+            finally
+            {
+                s_analysisGate.Release();
             }
         }
     }

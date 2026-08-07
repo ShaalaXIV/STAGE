@@ -2,15 +2,21 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
-using Pickles_Playlist_Editor.Utils;
-using Pickles_Playlist_Editor.Tools;
+using STAGE.Utils;
+using STAGE.Tools;
 
-namespace Pickles_Playlist_Editor
+namespace STAGE
 {
     public sealed partial class MainWindow
     {
         private async void YtDownloadButton_Click(object sender, RoutedEventArgs e)
         {
+            if (IsVfxPapMode)
+            {
+                await OpenPapImportDialogAsync(PapImportMode.StartAndLoop);
+                return;
+            }
+
             var dlg = new YouTubeDownloadDialog(ResolveTargetPlaylistForSingle()) { XamlRoot = this.Content.XamlRoot };
             await dlg.ShowAsync();
 
@@ -20,13 +26,21 @@ namespace Pickles_Playlist_Editor
 
             try
             {
+                SetProgressBarText("Importing downloaded YouTube track(s)...");
+                SetProgressBarPercent(0);
+
                 if (result.IsPlaylist)
                 {
                     string playlistName = GetUniquePlaylistName(result.Title);
                     await Task.Run(() => Playlist.Create(playlistName, string.Empty, null));
                     var playlists = Playlist.GetAll();
                     if (playlists.TryGetValue(playlistName, out var pl))
-                        await Task.Run(() => pl.Add(result.DownloadedFiles.ToArray()));
+                    {
+                        await Task.Run(() => pl.Add(
+                            result.DownloadedFiles.ToArray(),
+                            percent => SetProgressBarPercent(percent),
+                            result.AudioSettings));
+                    }
                 }
                 else
                 {
@@ -41,11 +55,18 @@ namespace Pickles_Playlist_Editor
                         playlists = Playlist.GetAll();
                     }
                     if (playlists.TryGetValue(targetPlaylist, out var pl))
-                        await Task.Run(() => pl.Add(result.DownloadedFiles.ToArray()));
+                    {
+                        await Task.Run(() => pl.Add(
+                            result.DownloadedFiles.ToArray(),
+                            percent => SetProgressBarPercent(percent),
+                            result.AudioSettings));
+                    }
                 }
 
+                SetProgressBarText("YouTube import complete");
                 LoadPlaylists();
                 SetProgressBarPercent(100);
+                ClearProgressDisplay();
             }
             catch (Exception ex)
             {

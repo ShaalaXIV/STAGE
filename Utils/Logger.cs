@@ -1,15 +1,15 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
-namespace Pickles_Playlist_Editor.Utils
+namespace STAGE.Utils
 {
     internal class Logger : IDisposable
     {
-        private static readonly string logFilePath = "picklesPlaylistEditor.log";
+        private static readonly string logFilePath = "stage.log";
         private static StreamWriter logFileWriter = new StreamWriter(logFilePath, append: true);
         private static ILoggerFactory? _loggerFactory;
         public static ILogger<T> CreateLogger<T>()

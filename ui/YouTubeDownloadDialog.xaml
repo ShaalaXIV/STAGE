@@ -1,5 +1,5 @@
 <ContentDialog
-    x:Class="Pickles_Playlist_Editor.YouTubeDownloadDialog"
+    x:Class="STAGE.YouTubeDownloadDialog"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     x:Uid="YouTubeDlg"
@@ -22,6 +22,31 @@
 
         <TextBlock x:Uid="TargetPlaylistLabel" Text="Target Playlist:"/>
         <ComboBox x:Name="TargetPlaylistComboBox" HorizontalAlignment="Stretch"/>
+
+        <TextBlock Text="Browser cookies"/>
+        <ComboBox x:Name="CookieBrowserComboBox" HorizontalAlignment="Stretch">
+            <ComboBoxItem Content="None"/>
+            <ComboBoxItem Content="Firefox"/>
+            <ComboBoxItem Content="Chrome"/>
+            <ComboBoxItem Content="Microsoft Edge"/>
+        </ComboBox>
+        <TextBlock Text="For age/login blocks, sign into YouTube in that browser first, then pick it here. Chrome/Edge may need to be fully closed first and can fail if Windows will not decrypt the browser cookies."
+                   Opacity="0.7" TextWrapping="Wrap"/>
+
+        <TextBlock Text="Equalizer preset"/>
+        <ComboBox x:Name="PresetComboBox" HorizontalAlignment="Stretch"/>
+
+        <TextBlock Text="Volume"/>
+        <Grid ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="55"/>
+            </Grid.ColumnDefinitions>
+            <Slider x:Name="VolumeSlider" Minimum="1" Maximum="5" StepFrequency="0.1"
+                    ValueChanged="VolumeSlider_ValueChanged"/>
+            <TextBlock Grid.Column="1" x:Name="VolumeValueLabel" VerticalAlignment="Center"
+                       TextAlignment="Right" Text="1.5"/>
+        </Grid>
 
         <ProgressBar x:Name="ProgressBar1" Minimum="0" Maximum="100" Value="0" Height="16" Margin="0,8,0,0"/>
         <TextBlock x:Name="StatusLabel" Text="" TextWrapping="Wrap"/>

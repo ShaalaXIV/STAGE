@@ -1,0 +1,29 @@
+<ContentDialog
+    x:Class="STAGE.ImportAudioOptionsDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Import Audio Settings"
+    PrimaryButtonText="Import"
+    CloseButtonText="Cancel"
+    DefaultButton="Primary">
+
+    <StackPanel Spacing="10" MinWidth="420">
+        <TextBlock Text="Equalizer preset"/>
+        <ComboBox x:Name="PresetComboBox" HorizontalAlignment="Stretch"/>
+
+        <TextBlock Text="Volume"/>
+        <Grid ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="55"/>
+            </Grid.ColumnDefinitions>
+            <Slider x:Name="VolumeSlider" Minimum="1" Maximum="5" StepFrequency="0.1"
+                    ValueChanged="VolumeSlider_ValueChanged"/>
+            <TextBlock Grid.Column="1" x:Name="VolumeValueLabel" VerticalAlignment="Center"
+                       TextAlignment="Right" Text="1.5"/>
+        </Grid>
+
+        <TextBlock Text="These settings are baked into the imported audio."
+                   Opacity="0.7" TextWrapping="Wrap"/>
+    </StackPanel>
+</ContentDialog>

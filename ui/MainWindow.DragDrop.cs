@@ -6,7 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
 
-namespace Pickles_Playlist_Editor
+namespace STAGE
 {
     public sealed partial class MainWindow
     {
@@ -15,6 +15,12 @@ namespace Pickles_Playlist_Editor
 
         private void PlaylistTreeView_DragItemsStarting(TreeView sender, TreeViewDragItemsStartingEventArgs e)
         {
+            if (IsVfxPapMode)
+            {
+                e.Cancel = true;
+                return;
+            }
+
             if (e.Items.Count == 1 && e.Items[0] is PlaylistNodeContent content)
             {
                 _draggedContent = content;
@@ -25,6 +31,12 @@ namespace Pickles_Playlist_Editor
 
         private void PlaylistTreeView_DragOver(object sender, DragEventArgs e)
         {
+            if (IsVfxPapMode)
+            {
+                e.AcceptedOperation = DataPackageOperation.None;
+                return;
+            }
+
             e.AcceptedOperation = DataPackageOperation.Move;
             // Track hover target so DragItemsCompleted knows where to insert.
             // GetPosition(null) returns root/host coordinates, which is what
@@ -35,6 +47,9 @@ namespace Pickles_Playlist_Editor
         // External file drops from Explorer
         private async void PlaylistTreeView_Drop(object sender, DragEventArgs e)
         {
+            if (IsVfxPapMode)
+                return;
+
             await HandleExternalDropAsync(e);
         }
 
@@ -42,6 +57,9 @@ namespace Pickles_Playlist_Editor
         // DragItemsCompleted always fires when a drag started here finishes.
         private async void PlaylistTreeView_DragItemsCompleted(TreeView sender, TreeViewDragItemsCompletedEventArgs args)
         {
+            if (IsVfxPapMode)
+                return;
+
             var draggedContent = _draggedContent;
             var dropContent = _pendingDropTarget;
             _draggedContent = null;
@@ -121,15 +139,17 @@ namespace Pickles_Playlist_Editor
 
                 string oldPath = Playlist.GetScdPath(song);
                 int lastSlash = oldPath.LastIndexOf('\\');
-                string oldDir = Path.Combine(Settings.PenumbraLocation, Settings.ModName, oldPath[..lastSlash]);
+                string oldDir = Path.Combine(Playlist.GetAudioModDirectory(), oldPath[..lastSlash]);
                 string oldSongFile = oldPath[(lastSlash + 1)..];
                 var scdKey = Playlist.GetScdKey(song) ?? Settings.BaselineScdKey;
                 string originalSongPath = song.Files.TryGetValue(scdKey, out var prevPath) ? prevPath : oldPath;
                 song.Files[scdKey] = Path.Combine(targetPlaylist.Name, oldSongFile);
 
-                string newDir = Path.Combine(Settings.PenumbraLocation, Settings.ModName, targetPlaylist.Name);
+                string newDir = Playlist.GetPlaylistDirectory(targetPlaylist.Name);
                 string oldFilePath = Path.Combine(oldDir, oldSongFile);
                 string newFilePath = Path.Combine(newDir, oldSongFile);
+                string oldBaselinePath = oldFilePath + ".stage-audio-baseline";
+                string newBaselinePath = newFilePath + ".stage-audio-baseline";
 
                 oldPlaylist.Options.RemoveAt(oldIndex);
                 targetPlaylist.Options.Insert(Math.Min(insertIndex, targetPlaylist.Options.Count), song);
@@ -140,6 +160,8 @@ namespace Pickles_Playlist_Editor
                     Directory.CreateDirectory(newDir);
                     File.Move(oldFilePath, newFilePath);
                     movedFile = true;
+                    if (File.Exists(oldBaselinePath))
+                        File.Move(oldBaselinePath, newBaselinePath);
 
                     oldPlaylist.Save();
                     targetPlaylist.Save();
@@ -152,6 +174,8 @@ namespace Pickles_Playlist_Editor
 
                     if (movedFile && File.Exists(newFilePath) && !File.Exists(oldFilePath))
                         File.Move(newFilePath, oldFilePath);
+                    if (movedFile && File.Exists(newBaselinePath) && !File.Exists(oldBaselinePath))
+                        File.Move(newBaselinePath, oldBaselinePath);
 
                     throw;
                 }
@@ -188,6 +212,13 @@ namespace Pickles_Playlist_Editor
             PlaylistNodeContent? targetContent, Playlist targetPlaylist, string[] files)
         {
             if (files == null || files.Length == 0) return;
+
+            var optionsDialog = new ImportAudioOptionsDialog { XamlRoot = this.Content.XamlRoot };
+            if (await optionsDialog.ShowAsync() != ContentDialogResult.Primary)
+                return;
+            EqualizerSettings audioSettings = optionsDialog.SelectedSettings;
+            optionsDialog.SaveSelectionAsDefault();
+
             SetProgressBarText(AppStrings.Prog_ImportingSongs);
             SetProgressBarPercent(0);
 
@@ -204,9 +235,9 @@ namespace Pickles_Playlist_Editor
             await Task.Run(() =>
             {
                 if (insertIndex >= 0)
-                    targetPlaylist.Insert(files, insertIndex, SetProgressBarPercent);
+                    targetPlaylist.Insert(files, insertIndex, SetProgressBarPercent, audioSettings);
                 else
-                    targetPlaylist.Add(files, SetProgressBarPercent);
+                    targetPlaylist.Add(files, SetProgressBarPercent, audioSettings);
             }).ConfigureAwait(false);
 
             DispatcherQueue.TryEnqueue(() =>

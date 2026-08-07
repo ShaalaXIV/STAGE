@@ -1,5 +1,5 @@
 using Newtonsoft.Json;
-using Pickles_Playlist_Editor.Utils;
+using STAGE.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +9,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Runtime.InteropServices;
 
-namespace Pickles_Playlist_Editor
+namespace STAGE
 {
     enum SortDirection
     {
@@ -20,7 +20,8 @@ namespace Pickles_Playlist_Editor
     public class Playlist
     {
         public int Version { get { return 0; } }
-        public string Name { get; set; }
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
         public string Description { get { return string.Empty; } }
         public string Image { get { return string.Empty; } }
         public int Page { get { return 0; } }
@@ -28,6 +29,11 @@ namespace Pickles_Playlist_Editor
         public string Type { get { return "Single"; } }
         public int DefaultSettings { get { return 0; } }
         public List<Option> Options { get; set; } = new List<Option>();
+
+        [JsonIgnore]
+        public string FilePath { get; set; } = "";
+
+        public bool ShouldSerializeId() => !string.IsNullOrWhiteSpace(Id);
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         private static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);
@@ -39,14 +45,24 @@ namespace Pickles_Playlist_Editor
                 throw new ArgumentException("Playlist name cannot contain any of the following characters: "
                     + string.Join(" ", Path.GetInvalidFileNameChars()));
 
+            string modDirectory = GetModDirectory();
             Playlist group = new Playlist();
+            group.Id = PenumbraMeta.EnsureGuid(null);
             group.Name = playlistName;
             group.Options = new List<Option>();
 
             Playlist mergedGroup = null;
-            var groupFileNames = GetJsonFiles(playlistName);
+            var meta = PenumbraMeta.TryLoad(modDirectory, out var loadedMeta) ? loadedMeta : null;
+            var existingMetaGroup = meta?.Groups.FirstOrDefault(existing =>
+                string.Equals(existing.Name, playlistName, StringComparison.OrdinalIgnoreCase));
+            var groupFileNames = meta == null ? GetJsonFiles(playlistName) : Array.Empty<string>();
             string fileName;
-            if (groupFileNames.Length == 1)
+            if (existingMetaGroup != null)
+            {
+                mergedGroup = PenumbraMeta.ToPlaylist(existingMetaGroup);
+                fileName = existingMetaGroup.FilePath;
+            }
+            else if (groupFileNames.Length == 1)
             {
                 fileName = groupFileNames[0];
                 mergedGroup = JsonConvert.DeserializeObject<Playlist>(File.ReadAllText(fileName));
@@ -57,9 +73,9 @@ namespace Pickles_Playlist_Editor
                 opt.Name = "Off";
                 opt.Files = new Dictionary<string, string>();
                 group.Options.Add(opt);
-                groupFileNames = Directory.GetFiles(Path.Combine(Settings.PenumbraLocation, Settings.ModName), "group_*");
+                groupFileNames = Directory.GetFiles(modDirectory, "group_*");
                 List<string> groupfiles = new List<string>(groupFileNames);
-                groupfiles.Sort();
+                groupfiles.Sort(NaturalStringComparer.OrdinalIgnoreCase);
                 mergedGroup = group;
 
                 int groupNumber = 1;
@@ -75,42 +91,62 @@ namespace Pickles_Playlist_Editor
 
             if (!string.IsNullOrEmpty(dir))
             {
-                int count = 0, totalCount = 0;
-                foreach (string ext in Settings.SupportedFileTypes)
-                {
-                    string[] fileNames = Directory.GetFiles(dir, "*" + ext, SearchOption.AllDirectories);
-                    totalCount += fileNames.Length;
-                }
+                var supported = new HashSet<string>(
+                    Settings.SupportedFileTypes, StringComparer.OrdinalIgnoreCase);
+                var fileNames = Directory.GetFiles(dir, "*.*", SearchOption.AllDirectories)
+                    .Where(file => supported.Contains(Path.GetExtension(file)))
+                    .OrderBy(path => path, NaturalStringComparer.OrdinalIgnoreCase)
+                    .ToList();
 
-                foreach (string ext in Settings.SupportedFileTypes)
+                int count = 0;
+                foreach (string file in fileNames)
                 {
-                    string[] fileNames = Directory.GetFiles(dir, "*"+ext, SearchOption.AllDirectories);
-
-                    foreach (string file in fileNames)
-                    {
-                        AddFiles(playlistName, mergedGroup, file);
-                        if (callback != null)
-                            callback((int)((float)(++count) / totalCount * 100));
-                    }
+                    AddFiles(playlistName, mergedGroup, file);
+                    if (callback != null)
+                        callback((int)((float)(++count) / Math.Max(1, fileNames.Count) * 100));
                 }
             }
 
             string json = JsonConvert.SerializeObject(mergedGroup, Formatting.Indented);
 
 
-            File.WriteAllText(Path.Combine(Settings.PenumbraLocation, Settings.ModName, fileName), json);
-            Directory.CreateDirectory(Path.Combine(Settings.PenumbraLocation, Settings.ModName, playlistName));
+            if (meta != null)
+            {
+                var metaGroup = existingMetaGroup ?? new VfxPapGroup();
+                PenumbraMeta.CopyPlaylistToGroup(mergedGroup, metaGroup);
+                if (existingMetaGroup == null)
+                    meta.Groups.Add(metaGroup);
+                meta.Save();
+            }
+            else
+            {
+                WritePlaylistJsonAtomic(Path.Combine(modDirectory, fileName), json);
+            }
+            Directory.CreateDirectory(Path.Combine(modDirectory, playlistName));
 
             // Notify Penumbra (if present) to refresh this mod because files/config changed.
             RefreshPenumbraMod();
         }
 
-        static Option AddFiles(string playlistName, Playlist group, string file)
+        static Option AddFiles(
+            string playlistName, Playlist group, string file, EqualizerSettings? audioSettings = null)
         {
             Option opt = null;
+            string? preparedAudioPath = null;
             try
             {
-                ScdFile scdFile = ScdFile.Import(file);
+                string importPath = file;
+                bool isScd = file.EndsWith(".scd", StringComparison.OrdinalIgnoreCase);
+                if (!isScd && audioSettings != null)
+                {
+                    preparedAudioPath = Path.Combine(
+                        Path.GetTempPath(), $"stage-import-{Guid.NewGuid():N}.ogg");
+                    FFMpeg.PrepareImportAudio(
+                        file, preparedAudioPath, audioSettings, Settings.NormalizeVolume);
+                    importPath = preparedAudioPath;
+                }
+
+                ScdFile scdFile = ScdFile.Import(importPath, processAudio: audioSettings == null);
                 string filenameroot = Path.GetFileNameWithoutExtension(file);
                 if (filenameroot.Equals("bpmloop", StringComparison.OrdinalIgnoreCase))
                 {
@@ -118,7 +154,7 @@ namespace Pickles_Playlist_Editor
                     filenameroot = filenameroot.Split(Path.DirectorySeparatorChar).Last();
                 }
                 string cleanPlaylistName = playlistName.Replace("/", "_");
-                string outDir = Path.Combine(Settings.PenumbraLocation, Settings.ModName, cleanPlaylistName);
+                string outDir = Path.Combine(GetModDirectory(), cleanPlaylistName);
                 Directory.CreateDirectory(outDir);
                 using (BinaryWriter writer = new BinaryWriter(new FileStream(Path.Combine(outDir, Path.GetFileName(filenameroot)+".scd"), FileMode.Create)))
                 {
@@ -136,6 +172,11 @@ namespace Pickles_Playlist_Editor
             {
                 throw new InvalidOperationException("Error adding file " + file + ": " + ex.Message, ex);
             }
+            finally
+            {
+                if (!string.IsNullOrWhiteSpace(preparedAudioPath) && File.Exists(preparedAudioPath))
+                    File.Delete(preparedAudioPath);
+            }
             return opt;
         }
 
@@ -143,7 +184,8 @@ namespace Pickles_Playlist_Editor
         {
             Playlist playlist = this;
             string cleanPlaylistName = playlist.Name.Replace("/", "_");
-            string outDir = Path.Combine(Settings.PenumbraLocation, Settings.ModName, cleanPlaylistName);
+            string modDirectory = GetModDirectory();
+            string outDir = Path.Combine(modDirectory, cleanPlaylistName);
             Directory.CreateDirectory(outDir);
             List<Option> optionsToRemove = new List<Option>();
             foreach (Option song in playlist.Options)
@@ -155,7 +197,7 @@ namespace Pickles_Playlist_Editor
 
                 if (song.Files != null)
                 {
-                    string oldPath = Path.Combine(Settings.PenumbraLocation, Settings.ModName, song.Files[song.Files.Keys.First()]);
+                    string oldPath = Path.Combine(modDirectory, song.Files[song.Files.Keys.First()]);
                     if (!File.Exists(oldPath))
                     {
                         optionsToRemove.Add(song);
@@ -182,13 +224,16 @@ namespace Pickles_Playlist_Editor
                         newPath = GetNonCollidingPath(newPath);
 
                         File.Move(oldPath, newPath);
+                        string oldBaselinePath = oldPath + ".stage-audio-baseline";
+                        if (File.Exists(oldBaselinePath))
+                            File.Move(oldBaselinePath, newPath + ".stage-audio-baseline");
                         BPMDetector.UpdateCacheForSCD(oldPath, newPath);
                         song.Files[song.Files.Keys.First()] = Path.Combine(cleanPlaylistName, Path.GetFileName(newPath));
                     }
                 }
 
                 // delete empty folders
-                string playlistFolder = Path.Combine(Settings.PenumbraLocation, Settings.ModName, cleanPlaylistName);
+                string playlistFolder = Path.Combine(modDirectory, cleanPlaylistName);
                 foreach (string subDir in Directory.GetDirectories(playlistFolder))
                 {
                     if (Directory.GetFiles(subDir).Length == 0 && Directory.GetDirectories(subDir).Length == 0)
@@ -244,6 +289,27 @@ namespace Pickles_Playlist_Editor
             return opt.Files[key];
         }
 
+        public static string GetFullScdPath(Option opt)
+        {
+            string scdPath = GetScdPath(opt);
+            return string.IsNullOrWhiteSpace(scdPath)
+                ? string.Empty
+                : GetFullScdPath(scdPath);
+        }
+
+        public static string GetFullScdPath(string scdPath)
+        {
+            if (string.IsNullOrWhiteSpace(scdPath))
+                return string.Empty;
+
+            return Path.GetFullPath(Path.Combine(GetAudioModDirectory(), scdPath));
+        }
+
+        public static string GetAudioModDirectory() => GetModDirectory();
+
+        public static string GetPlaylistDirectory(string playlistName) =>
+            Path.Combine(GetAudioModDirectory(), playlistName);
+
         public static string GetBaselineScdFileName()
         {
             string key = Settings.BaselineScdKey.Replace('/', Path.DirectorySeparatorChar);
@@ -256,33 +322,44 @@ namespace Pickles_Playlist_Editor
         public static Dictionary<string, Playlist> GetAll()
         {
             Dictionary<string, Playlist> playlists = new Dictionary<string, Playlist>();
-            if (Settings.PenumbraLocation == null || Settings.ModName == null)
+            string modDirectory = GetModDirectory();
+            if (string.IsNullOrWhiteSpace(modDirectory))
                 return playlists;
 
-            string modDirectory = Path.Combine(Settings.PenumbraLocation, Settings.ModName);
             if (!Directory.Exists(modDirectory))
                 return playlists;
 
-            var loadedPlaylists = new List<Playlist>();
-            var fileNames = Directory.GetFiles(modDirectory, "group_*.json");
-            foreach (string file in fileNames)
-            {
-                try
-                {
-                    Playlist playlist = JsonConvert.DeserializeObject<Playlist>(File.ReadAllText(file));
+            PenumbraMeta.RepairDuplicateGuids(modDirectory);
 
-                    if (playlist == null)
-                    {
-                        Console.Error.WriteLine("Error loading playlist from file " + file);
-                    }
-                    else
-                    {
-                        loadedPlaylists.Add(playlist);
-                    }
-                }
-                catch (Exception ex)
+            var loadedPlaylists = new List<Playlist>();
+            if (PenumbraMeta.TryLoad(modDirectory, out var meta))
+            {
+                foreach (var group in meta!.Groups.Where(VfxPapGroup.IsAudioPlaylistGroup))
+                    loadedPlaylists.Add(PenumbraMeta.ToPlaylist(group));
+            }
+            else
+            {
+                var fileNames = Directory.GetFiles(modDirectory, "group_*.json");
+                foreach (string file in fileNames.OrderBy(path => path, NaturalStringComparer.OrdinalIgnoreCase))
                 {
-                    Console.Error.WriteLine("Error loading playlist from file " + file + ": " + ex);
+                    try
+                    {
+                        Playlist playlist = JsonConvert.DeserializeObject<Playlist>(File.ReadAllText(file));
+
+                        if (playlist == null)
+                        {
+                            Console.Error.WriteLine("Error loading playlist from file " + file);
+                        }
+                        else
+                        {
+                            playlist.FilePath = file;
+                            loadedPlaylists.Add(playlist);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine("Error loading playlist from file " + file + ": " + ex);
+                    }
                 }
             }
 
@@ -297,12 +374,28 @@ namespace Pickles_Playlist_Editor
 
         public static void SortAllPlaylistsByName()
         {
-            if (Settings.PenumbraLocation == null || Settings.ModName == null)
+            string modDirectory = GetModDirectory();
+            if (string.IsNullOrWhiteSpace(modDirectory))
                 return;
 
-            string modDirectory = Path.Combine(Settings.PenumbraLocation, Settings.ModName);
             if (!Directory.Exists(modDirectory))
                 return;
+
+            if (PenumbraMeta.TryLoad(modDirectory, out var meta))
+            {
+                var audioGroups = meta!.Groups
+                    .Where(VfxPapGroup.IsAudioPlaylistGroup)
+                    .OrderBy(group => group.Name, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(group => group.Priority)
+                    .ToList();
+
+                for (int i = 0; i < audioGroups.Count; i++)
+                    audioGroups[i].Priority = i + 1;
+
+                meta.Save();
+                RefreshPenumbraMod();
+                return;
+            }
 
             var playlistFiles = Directory.GetFiles(modDirectory, "group_*.json")
                 .Select(file => new
@@ -320,13 +413,13 @@ namespace Pickles_Playlist_Editor
             if (playlistFiles.Count == 0)
                 return;
 
-            string backupDirectory = Path.Combine(Path.GetTempPath(), "PicklesPlaylistSort_" + Guid.NewGuid().ToString("N"));
+            string backupDirectory = Path.Combine(Path.GetTempPath(), "StagePlaylistSort_" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(backupDirectory);
 
-            var tempPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var targetPaths = playlistFiles
                 .Select((item, index) => GetOrderedGroupFilePath(modDirectory, item.Playlist.Name, index + 1))
                 .ToList();
+            var stagedPaths = new List<string>();
 
             try
             {
@@ -342,46 +435,55 @@ namespace Pickles_Playlist_Editor
                         throw new IOException($"Cannot sort playlists because target file already exists: {targetPath}");
                 }
 
-                foreach (var item in playlistFiles)
-                {
-                    string tempPath = item.OriginalPath + ".sorttmp_" + Guid.NewGuid().ToString("N");
-                    File.Move(item.OriginalPath, tempPath);
-                    tempPaths[item.OriginalPath] = tempPath;
-                }
-
                 for (int i = 0; i < playlistFiles.Count; i++)
                 {
                     var item = playlistFiles[i];
                     item.Playlist.Priority = i + 1;
                     string json = JsonConvert.SerializeObject(item.Playlist, Formatting.Indented);
-                    File.WriteAllText(targetPaths[i], json);
+                    string stagedPath = Path.Combine(
+                        modDirectory, $".stage-sort-{Guid.NewGuid():N}.tmp");
+                    WritePlaylistJsonAtomic(stagedPath, json);
+                    stagedPaths.Add(stagedPath);
                 }
 
-                foreach (var tempPath in tempPaths.Values)
+                PenumbraMeta.RequireFormat(modDirectory, PenumbraModFormat.LegacyGroupFiles);
+                for (int i = 0; i < targetPaths.Count; i++)
                 {
-                    if (File.Exists(tempPath))
-                        File.Delete(tempPath);
+                    if (File.Exists(targetPaths[i]))
+                        File.Replace(stagedPaths[i], targetPaths[i], null, true);
+                    else
+                        File.Move(stagedPaths[i], targetPaths[i]);
+                }
+
+                var targetSet = new HashSet<string>(targetPaths, StringComparer.OrdinalIgnoreCase);
+                foreach (var originalPath in originalPaths)
+                {
+                    if (!targetSet.Contains(originalPath) && File.Exists(originalPath))
+                        File.Delete(originalPath);
                 }
 
                 RefreshPenumbraMod();
             }
             catch
             {
-                foreach (var targetPath in targetPaths)
+                bool canRestoreLegacyFiles = false;
+                try
                 {
-                    if (File.Exists(targetPath))
-                        File.Delete(targetPath);
+                    canRestoreLegacyFiles =
+                        PenumbraMeta.DetectFormat(modDirectory) == PenumbraModFormat.LegacyGroupFiles;
+                }
+                catch
+                {
+                    // An invalid or changing meta.json is never safe to overwrite.
                 }
 
-                foreach (var item in playlistFiles)
+                if (canRestoreLegacyFiles)
                 {
-                    if (tempPaths.TryGetValue(item.OriginalPath, out var tempPath) && File.Exists(tempPath))
-                        File.Move(tempPath, item.OriginalPath);
-                }
+                    foreach (var currentFile in Directory.GetFiles(modDirectory, "group_*.json"))
+                        File.Delete(currentFile);
 
-                foreach (var backupFile in Directory.GetFiles(backupDirectory))
-                {
-                    File.Copy(backupFile, Path.Combine(modDirectory, Path.GetFileName(backupFile)), true);
+                    foreach (var backupFile in Directory.GetFiles(backupDirectory))
+                        File.Copy(backupFile, Path.Combine(modDirectory, Path.GetFileName(backupFile)), true);
                 }
 
                 throw;
@@ -390,6 +492,11 @@ namespace Pickles_Playlist_Editor
             {
                 try
                 {
+                    foreach (var stagedPath in stagedPaths)
+                    {
+                        if (File.Exists(stagedPath))
+                            File.Delete(stagedPath);
+                    }
                     if (Directory.Exists(backupDirectory))
                         Directory.Delete(backupDirectory, true);
                 }
@@ -407,25 +514,28 @@ namespace Pickles_Playlist_Editor
 
         private sealed record PlaylistFile(string OriginalPath, Playlist Playlist);
 
-        public void Add(string[] fileNames, Action<int>? callback = null)
+        public void Add(
+            string[] fileNames, Action<int>? callback = null, EqualizerSettings? audioSettings = null)
         {
             int count = 0;
-            foreach (string file in fileNames)
+            foreach (string file in fileNames.OrderBy(path => path, NaturalStringComparer.OrdinalIgnoreCase))
             {
                 if (Settings.SupportedFileTypes.Contains(Path.GetExtension(file).ToLower()))
-                    AddFiles(Name, this, file);
+                    AddFiles(Name, this, file, audioSettings);
                 if (callback != null)
                     callback((int)((float)(++count)/fileNames.Length*100));
             }
             Save();
         }
 
-        public void Insert(string[] fileNames, int index, Action<int>? callback = null)
+        public void Insert(
+            string[] fileNames, int index, Action<int>? callback = null,
+            EqualizerSettings? audioSettings = null)
         {
             int count = 0;
             foreach (string file in fileNames)
             {
-                Option opt = AddFiles(Name, this, file);
+                Option opt = AddFiles(Name, this, file, audioSettings);
                 Options.RemoveAt(Options.Count - 1);
                 Options.Insert(index, opt);
                 index++;
@@ -458,13 +568,30 @@ namespace Pickles_Playlist_Editor
             if (GetJsonFiles(newName).Length > 0)
                 throw new InvalidOperationException($"A playlist named '{newName}' already exists.");
 
-            string modDirectory = Path.Combine(Settings.PenumbraLocation, Settings.ModName);
-            string? oldJsonPath = GetJsonFiles(oldName).FirstOrDefault();
-            if (string.IsNullOrEmpty(oldJsonPath) || !File.Exists(oldJsonPath))
-                throw new FileNotFoundException("Playlist JSON file not found.", oldJsonPath);
+            string modDirectory = GetModDirectory();
+            bool metaMode = PenumbraMeta.TryLoad(modDirectory, out var meta);
+            VfxPapGroup? metaGroup = null;
+            string? oldJsonPath = null;
+            if (metaMode)
+            {
+                metaGroup = meta!.Groups.FirstOrDefault(group =>
+                    string.Equals(group.Id, Id, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(group.Name, oldName, StringComparison.OrdinalIgnoreCase));
+                if (metaGroup == null)
+                    throw new FileNotFoundException("Playlist group was not found in meta.json.");
+            }
+            else
+            {
+                oldJsonPath = GetJsonFiles(oldName).FirstOrDefault();
+                if (string.IsNullOrEmpty(oldJsonPath) || !File.Exists(oldJsonPath))
+                    throw new FileNotFoundException("Playlist JSON file not found.", oldJsonPath);
+            }
 
             string oldFolder = Path.Combine(modDirectory, oldName);
             string newFolder = Path.Combine(modDirectory, newName);
+            PenumbraMeta.RequireFormat(
+                modDirectory,
+                metaMode ? PenumbraModFormat.SingularMeta : PenumbraModFormat.LegacyGroupFiles);
 
             if (Directory.Exists(oldFolder) && !string.Equals(oldFolder, newFolder, StringComparison.OrdinalIgnoreCase))
             {
@@ -473,9 +600,12 @@ namespace Pickles_Playlist_Editor
                 Directory.Move(oldFolder, newFolder);
             }
 
-            string newJsonPath = Path.Combine(modDirectory, Path.GetFileName(oldJsonPath).Replace(oldName.Replace("/", "_"), newName.Replace("/", "_")));
-            if (!string.Equals(oldJsonPath, newJsonPath, StringComparison.OrdinalIgnoreCase))
-                File.Move(oldJsonPath, newJsonPath);
+            if (!metaMode && oldJsonPath != null)
+            {
+                string newJsonPath = Path.Combine(modDirectory, Path.GetFileName(oldJsonPath).Replace(oldName.Replace("/", "_"), newName.Replace("/", "_")));
+                if (!string.Equals(oldJsonPath, newJsonPath, StringComparison.OrdinalIgnoreCase))
+                    File.Move(oldJsonPath, newJsonPath);
+            }
 
             Name = newName;
 
@@ -496,45 +626,130 @@ namespace Pickles_Playlist_Editor
                 }
             }
 
-            Save();
+            if (metaMode && metaGroup != null && meta != null)
+            {
+                PenumbraMeta.CopyPlaylistToGroup(this, metaGroup);
+                meta.Save();
+                RefreshPenumbraMod();
+            }
+            else
+            {
+                Save();
+            }
             return true;
         }
 
         public void Save()
         {
+            string modDirectory = GetModDirectory();
+            if (PenumbraMeta.TryLoad(modDirectory, out var meta))
+            {
+                var group = meta!.Groups.FirstOrDefault(candidate =>
+                    (!string.IsNullOrWhiteSpace(Id) && string.Equals(candidate.Id, Id, StringComparison.OrdinalIgnoreCase)) ||
+                    string.Equals(candidate.Name, Name, StringComparison.OrdinalIgnoreCase));
+                if (group == null)
+                    return;
+
+                PenumbraMeta.CopyPlaylistToGroup(this, group);
+                meta.Save();
+                RefreshPenumbraMod();
+                return;
+            }
+
             var fileNames = GetJsonFiles(Name);
             if (fileNames.Length == 0) return;
             string fileName = fileNames[0];
             string json = JsonConvert.SerializeObject(this, Formatting.Indented);
-            File.WriteAllText(fileName, json);
+            WritePlaylistJsonAtomic(fileName, json);
 
             // Notify Penumbra (if present) that the mod directory changed so it can refresh.
             RefreshPenumbraMod();
+        }
+
+        private static void WritePlaylistJsonAtomic(string fileName, string json)
+        {
+            PenumbraMeta.RequireFormat(
+                Path.GetDirectoryName(fileName) ?? "",
+                PenumbraModFormat.LegacyGroupFiles);
+            string directory = Path.GetDirectoryName(fileName)
+                ?? throw new InvalidOperationException("Playlist JSON path has no parent directory.");
+            var validated = JsonConvert.DeserializeObject<Playlist>(json);
+            if (validated == null || string.IsNullOrWhiteSpace(validated.Name) || validated.Options == null)
+                throw new InvalidDataException("Refusing to write an invalid playlist JSON file.");
+
+            Directory.CreateDirectory(directory);
+
+            string tempPath = Path.Combine(
+                directory, $".{Path.GetFileName(fileName)}.{Guid.NewGuid():N}.tmp");
+            string backupPath = fileName + ".stage-backup";
+
+            try
+            {
+                using (var stream = new FileStream(
+                    tempPath,
+                    FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None,
+                    4096,
+                    FileOptions.WriteThrough))
+                using (var writer = new StreamWriter(stream, new UTF8Encoding(false)))
+                {
+                    writer.Write(json);
+                    writer.Flush();
+                    stream.Flush(true);
+                }
+
+                if (File.Exists(fileName))
+                    File.Replace(tempPath, fileName, backupPath, true);
+                else
+                    File.Move(tempPath, fileName);
+            }
+            finally
+            {
+                if (File.Exists(tempPath))
+                    File.Delete(tempPath);
+            }
         }
 
         public void Delete()
         {
             if (string.IsNullOrEmpty(Name))
                 return;
-            if (GetJsonFiles(Name).Length > 0)
-                File.Delete(GetJsonFiles(Name)[0]);
 
-            if (Directory.Exists(Path.Combine(Settings.PenumbraLocation, Settings.ModName, Name)))
-                Directory.Delete(Path.Combine(Settings.PenumbraLocation, Settings.ModName, Name), true);
+            string modDirectory = GetModDirectory();
+            if (PenumbraMeta.TryLoad(modDirectory, out var meta))
+            {
+                int removed = meta!.Groups.RemoveAll(group =>
+                    (!string.IsNullOrWhiteSpace(Id) && string.Equals(group.Id, Id, StringComparison.OrdinalIgnoreCase)) ||
+                    string.Equals(group.Name, Name, StringComparison.OrdinalIgnoreCase));
+                if (removed > 0)
+                    meta.Save();
+            }
+            else if (GetJsonFiles(Name).Length > 0)
+            {
+                PenumbraMeta.RequireFormat(modDirectory, PenumbraModFormat.LegacyGroupFiles);
+                File.Delete(GetJsonFiles(Name)[0]);
+            }
+
+            PenumbraMeta.RequireFormat(
+                modDirectory,
+                meta != null ? PenumbraModFormat.SingularMeta : PenumbraModFormat.LegacyGroupFiles);
+            if (Directory.Exists(Path.Combine(modDirectory, Name)))
+                Directory.Delete(Path.Combine(modDirectory, Name), true);
             // Notify Penumbra after removing files
             RefreshPenumbraMod();
         }
 
         private static string[] GetJsonFiles(string name)
         {
-            if (Settings.PenumbraLocation == null || Settings.ModName == null)
+            string modDirectory = GetModDirectory();
+            if (string.IsNullOrWhiteSpace(modDirectory))
                 return Array.Empty<string>();
 
-            string modDirectory = Path.Combine(Settings.PenumbraLocation, Settings.ModName);
             if (!Directory.Exists(modDirectory))
                 return Array.Empty<string>();
 
-            return Directory.GetFiles(Path.Combine(Settings.PenumbraLocation, Settings.ModName), "group_*_" + name.Replace("/","_") + ".json");
+            return Directory.GetFiles(modDirectory, "group_*_" + name.Replace("/","_") + ".json");
         }
 
         internal void Shuffle()
@@ -616,7 +831,7 @@ namespace Pickles_Playlist_Editor
             {
                 Option offOption = Options.FirstOrDefault(o => o.Name.Equals("Off", StringComparison.OrdinalIgnoreCase));
                 List<Option> otherOptions = Options.Where(o => !o.Name.Equals("Off", StringComparison.OrdinalIgnoreCase))
-                    .OrderBy(o => o.Name, StringComparer.OrdinalIgnoreCase).ToList();
+                    .OrderBy(o => o.Name, NaturalStringComparer.OrdinalIgnoreCase).ToList();
                 Options = new List<Option>();
                 if (offOption != null) Options.Add(offOption);
                 Options.AddRange(otherOptions);
@@ -674,13 +889,34 @@ namespace Pickles_Playlist_Editor
         {
             try
             {
-                if (Settings.AutoReloadMod)
-                    PenumbraApi.ReloadMod(Settings.ModName, Settings.ModName);
+                if (!Settings.AutoReloadMod)
+                    return;
+
+                string modDirectory = GetModDirectory();
+                if (string.IsNullOrWhiteSpace(modDirectory))
+                    return;
+
+                PenumbraApi.ScheduleReloadModFolder(modDirectory);
             }
             catch
             {
                 // best-effort only; swallow any errors to avoid breaking the UI
             }
+        }
+
+        private static string GetModDirectory()
+        {
+            string modDirectory = Settings.AudioModFolder;
+            if (!string.IsNullOrWhiteSpace(modDirectory))
+                return modDirectory;
+
+            if (!string.IsNullOrWhiteSpace(Settings.PenumbraLocation) &&
+                !string.IsNullOrWhiteSpace(Settings.ModName))
+            {
+                return Path.Combine(Settings.PenumbraLocation, Settings.ModName);
+            }
+
+            return string.Empty;
         }
     }
 }

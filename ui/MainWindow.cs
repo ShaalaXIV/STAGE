@@ -12,10 +12,16 @@ using System.IO;
 using System;
 using Windows.Storage.Pickers;
 
-namespace Pickles_Playlist_Editor
+namespace STAGE
 {
     public sealed partial class MainWindow : Window
     {
+        private enum MainContentMode
+        {
+            AudioPlaylists,
+            VfxPap
+        }
+
         public static Dictionary<string, Playlist> Playlists { get; set; } = new();
 
         public ObservableCollection<PlaylistNodeContent> RootPlaylistItems { get; } = new();
@@ -24,6 +30,9 @@ namespace Pickles_Playlist_Editor
         private PlaylistNodeContent? _selectedNode;
 
         private readonly MenuFlyout _treeContextMenu;
+        private bool _updatingActiveModSelector;
+        private bool _isWindowInitialized;
+        private MainContentMode _contentMode = MainContentMode.AudioPlaylists;
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, uint attr, ref int attrValue, int attrSize);
@@ -32,16 +41,92 @@ namespace Pickles_Playlist_Editor
 
         public MainWindow()
         {
-            this.InitializeComponent();
+            try
+            {
+                App.WriteStartupText("MainWindow InitializeComponent starting", "");
+                this.InitializeComponent();
+                App.WriteStartupText("MainWindow InitializeComponent finished", "");
+            }
+            catch (Exception ex)
+            {
+                App.WriteStartupLog("MainWindow InitializeComponent failed", ex);
+                throw;
+            }
 
             ApplySystemThemeSafely();
             SetWindowIconSafely();
-            this.Title = "Pickles Playlist Editor";
+            this.Title = AppEnvironment.DisplayName;
 
             _treeContextMenu = BuildContextMenu();
+            InitializeActiveModSelector();
+            _isWindowInitialized = true;
 
             TryRestoreWindowSize();
             RegisterWindowSizeSave();
+        }
+
+        private void InitializeActiveModSelector()
+        {
+            _updatingActiveModSelector = true;
+            try
+            {
+                string activePath = GetCurrentModeModFolder();
+                var paths = Settings.ManagedModFolders.ToList();
+                if (!string.IsNullOrWhiteSpace(activePath)
+                    && !paths.Contains(activePath, StringComparer.OrdinalIgnoreCase))
+                {
+                    paths.Add(activePath);
+                    Settings.ManagedModFolders = paths;
+                }
+
+                ActiveModComboBox.Items.Clear();
+                foreach (string path in paths.OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+                    ActiveModComboBox.Items.Add(path);
+
+                ActiveModComboBox.SelectedItem = paths.FirstOrDefault(
+                    path => string.Equals(path, activePath, StringComparison.OrdinalIgnoreCase));
+            }
+            finally
+            {
+                _updatingActiveModSelector = false;
+            }
+        }
+
+        private async void ActiveModComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_updatingActiveModSelector || ActiveModComboBox.SelectedItem is not string path)
+                return;
+            if (string.Equals(path, GetCurrentModeModFolder(), StringComparison.OrdinalIgnoreCase))
+                return;
+            if (!Directory.Exists(path) || !File.Exists(Path.Combine(path, "meta.json")))
+            {
+                await ShowDialogAsync(
+                    "Mod Folder Unavailable",
+                    $"The saved mod folder is missing or is no longer a valid Penumbra mod:\n\n{path}");
+                InitializeActiveModSelector();
+                return;
+            }
+
+            Settings.SetActiveModFolder(path);
+            if (IsVfxPapMode)
+                Settings.ActiveVfxModFolder = path;
+            else
+                Settings.ActiveAudioModFolder = path;
+            ResetForActiveModChange();
+        }
+
+        private string GetCurrentModeModFolder() =>
+            IsVfxPapMode ? Settings.ActiveVfxModFolder : Settings.ActiveAudioModFolder;
+
+        private void ResetForActiveModChange()
+        {
+            _selectedNode = null;
+            _contextMenuNode = null;
+            DeleteButton.IsEnabled = false;
+            ShuffleButton.IsEnabled = false;
+            SortByBPMButton.IsEnabled = false;
+            _playlistExpandedStates.Clear();
+            LoadCurrentContent();
         }
 
         private void TryRestoreWindowSize()
@@ -106,7 +191,7 @@ namespace Pickles_Playlist_Editor
         {
             try
             {
-                var iconPath = Path.Combine(AppContext.BaseDirectory, "pickle.ico");
+                var iconPath = Path.Combine(AppContext.BaseDirectory, "stage.ico");
                 if (File.Exists(iconPath))
                 {
                     this.AppWindow.SetIcon(iconPath);
@@ -244,16 +329,42 @@ namespace Pickles_Playlist_Editor
         private void PlaylistTreeView_Loaded(object sender, RoutedEventArgs e)
         {
             RefreshBackground();
-            var picklePath = System.IO.Path.Combine(AppContext.BaseDirectory, "Resources", "pickle.png");
-            if (System.IO.File.Exists(picklePath))
-                BusyPickleImage.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(picklePath));
-            LoadPlaylists();
+            var busyImagePath = System.IO.Path.Combine(AppContext.BaseDirectory, "Resources", "stage.png");
+            if (System.IO.File.Exists(busyImagePath))
+                BusyImage.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(busyImagePath));
+            ApplyContentModeUiState();
+            LoadCurrentContentDeferredAudioMetadata();
         }
 
         private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             var filter = SearchTextBox.Text?.Trim() ?? string.Empty;
-            LoadPlaylists(filter);
+            if (IsVfxPapMode)
+                LoadCurrentContent(filter);
+            else
+                LoadCurrentContentDeferredAudioMetadata(filter);
+        }
+
+        private void ContentModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!_isWindowInitialized)
+                return;
+
+            if (ContentModeComboBox?.SelectedIndex < 0)
+                return;
+
+            _contentMode = ContentModeComboBox.SelectedIndex == 1
+                ? MainContentMode.VfxPap
+                : MainContentMode.AudioPlaylists;
+
+            _selectedNode = null;
+            _contextMenuNode = null;
+            InitializeActiveModSelector();
+            ApplyContentModeUiState();
+            if (IsVfxPapMode)
+                LoadCurrentContent();
+            else
+                LoadCurrentContentDeferredAudioMetadata();
         }
 
         private void AddSongsButton_Click(object sender, RoutedEventArgs e)
@@ -263,7 +374,15 @@ namespace Pickles_Playlist_Editor
 
         private void fromMyComputerToolStripMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            _ = AddSongsFromComputerAsync();
+            if (IsVfxPapMode)
+                _ = OpenPapImportDialogAsync(PapImportMode.SingleLoop);
+            else
+                _ = AddSongsFromComputerAsync();
+        }
+
+        private void ImportAvfxMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            _ = OpenAvfxImportDialogAsync();
         }
 
         private async Task AddSongsFromComputerAsync()
@@ -315,6 +434,7 @@ namespace Pickles_Playlist_Editor
         private async void PlaylistTreeView_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
         {
             if (_busyOverlayVisible) return;
+            if (IsVfxPapMode) return;
 
             if (e.OriginalSource is not FrameworkElement fe)
                 return;
@@ -379,11 +499,7 @@ namespace Pickles_Playlist_Editor
                 LoadPlaylistsAndExpand(newName);
                 var renamed = FindPlaylistNode(newName);
                 if (renamed != null)
-                {
-                    PlaylistTreeView.SelectedItems.Clear();
-                    PlaylistTreeView.SelectedItems.Add(renamed);
                     _selectedNode = renamed;
-                }
             }
             catch (Exception ex)
             {
@@ -427,17 +543,20 @@ namespace Pickles_Playlist_Editor
             if (string.IsNullOrWhiteSpace(newName) || string.Equals(newName, currentName, StringComparison.Ordinal))
                 return;
 
-            string? songScdPath = Playlist.GetScdPath(song);
-            song.Name = newName;
-            playlist.Save();
-            LoadPlaylistsAndExpand(playlist.Name);
-            var parentNode = FindPlaylistNode(playlist.Name);
-            var renamedSong = parentNode == null ? null : FindSongNode(parentNode, newName, songScdPath);
-            if (renamedSong != null)
+            try
             {
-                PlaylistTreeView.SelectedItems.Clear();
-                PlaylistTreeView.SelectedItems.Add(renamedSong);
-                _selectedNode = renamedSong;
+                string? songScdPath = Playlist.GetScdPath(song);
+                song.Name = newName;
+                playlist.Save();
+                LoadPlaylistsAndExpand(playlist.Name);
+                var parentNode = FindPlaylistNode(playlist.Name);
+                var renamedSong = parentNode == null ? null : FindSongNode(parentNode, newName, songScdPath);
+                if (renamedSong != null)
+                    _selectedNode = renamedSong;
+            }
+            catch (Exception ex)
+            {
+                await ShowDialogAsync(AppStrings.Dlg_Error, ex.Message);
             }
         }
 
@@ -456,6 +575,19 @@ namespace Pickles_Playlist_Editor
 
         private void PlaylistTreeView_RightTapped(object sender, RightTappedRoutedEventArgs e)
         {
+            if (IsVfxPapMode)
+            {
+                if (e.OriginalSource is Microsoft.UI.Xaml.FrameworkElement vfxFe)
+                {
+                    var content = FindNodeContentFromElement(vfxFe);
+                    if (content == null) return;
+
+                    _contextMenuNode = content;
+                    ShowVfxPapContextMenu(content, e.GetPosition(PlaylistTreeView));
+                }
+                return;
+            }
+
             if (e.OriginalSource is Microsoft.UI.Xaml.FrameworkElement fe)
             {
                 var content = FindNodeContentFromElement(fe);
@@ -486,6 +618,19 @@ namespace Pickles_Playlist_Editor
 
         private void PlaylistTreeView_SelectionChanged(TreeView sender, TreeViewSelectionChangedEventArgs args)
         {
+            if (IsVfxPapMode)
+            {
+                var selectedNodes = PlaylistTreeView.SelectedItems
+                    .OfType<PlaylistNodeContent>()
+                    .ToList();
+
+                _selectedNode = selectedNodes.FirstOrDefault();
+                DeleteButton.IsEnabled = selectedNodes.Any(IsBulkDeletableVfxPapNode);
+                ShuffleButton.IsEnabled = false;
+                SortByBPMButton.IsEnabled = false;
+                return;
+            }
+
             bool hasCheckedPlaylist = false;
             bool hasCheckedSong = false;
 
@@ -513,17 +658,35 @@ namespace Pickles_Playlist_Editor
 
         private async Task OpenSettingsAsync()
         {
-            var dialog = new SettingsDialog { XamlRoot = this.Content.XamlRoot };
-            await dialog.ShowAsync();
+            var dialog = new SettingsDialog();
+            RootGrid.Children.Add(dialog);
+            try
+            {
+                await dialog.ShowAsync(ContentDialogPlacement.InPlace);
+            }
+            finally
+            {
+                RootGrid.Children.Remove(dialog);
+            }
+            InitializeActiveModSelector();
             RefreshBackground();
-            LoadPlaylists();
+            LoadCurrentContentDeferredAudioMetadata();
         }
 
         internal void RefreshBackground()
         {
-            var path = Settings.BackgroundImagePath;
-            if (File.Exists(path))
-                TreeViewBackgroundBrush.ImageSource = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(path));
+            try
+            {
+                var path = Settings.BackgroundImagePath;
+                if (File.Exists(path))
+                    TreeViewBackgroundBrush.ImageSource = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(path));
+                else
+                    TreeViewBackgroundBrush.ImageSource = null;
+            }
+            catch
+            {
+                TreeViewBackgroundBrush.ImageSource = null;
+            }
         }
 
         private async Task OpenNewPlaylistAsync()
@@ -531,6 +694,34 @@ namespace Pickles_Playlist_Editor
             var dialog = new NewPlaylistDialog { XamlRoot = this.Content.XamlRoot };
             await dialog.ShowAsync();
             LoadPlaylists();
+        }
+
+        private void ApplyContentModeUiState()
+        {
+            bool audioMode = !IsVfxPapMode;
+
+            AddSongsButton.Label = audioMode ? "Add Songs" : "Add VFX";
+            AddSongsButton.IsEnabled = true;
+            FromMyComputerMenuItem.Text = audioMode ? "From My Computer" : "Import Animation";
+            FromYouTubeMenuItem.Text = audioMode ? "From YouTube" : "Import Animation w/ Startup";
+            ImportAvfxMenuItem.Text = "Import VFX";
+            ImportAvfxMenuItem.Visibility = audioMode ? Visibility.Collapsed : Visibility.Visible;
+
+            NewButton.Label = audioMode ? "New Playlist" : "New VFX Group";
+            NewButton.IsEnabled = audioMode;
+
+            DeleteButton.IsEnabled = false;
+            ShuffleButton.IsEnabled = false;
+            SortByBPMButton.IsEnabled = false;
+
+            ShuffleButton.Visibility = audioMode ? Visibility.Visible : Visibility.Collapsed;
+            SortByBPMButton.Visibility = audioMode ? Visibility.Visible : Visibility.Collapsed;
+
+            PreviousButton.IsEnabled = audioMode;
+            PlayButton.IsEnabled = audioMode;
+            PauseButton.IsEnabled = audioMode;
+            StopButton.IsEnabled = audioMode;
+            NextButton.IsEnabled = audioMode;
         }
 
         private void ShuffleButton_Click(object sender, RoutedEventArgs e)

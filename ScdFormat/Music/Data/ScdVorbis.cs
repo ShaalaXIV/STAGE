@@ -1,8 +1,8 @@
 using NAudio.Vorbis;
 using NAudio.Wave;
 using NVorbis;
-using Pickles_Playlist_Editor;
-using Pickles_Playlist_Editor.Utils;
+using STAGE;
+using STAGE.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -163,19 +163,26 @@ namespace VfxEditor.ScdFormat.Music.Data {
 
         // =======================
 
-        public static ScdAudioEntry ImportOgg( string path, ScdAudioEntry oldEntry) 
+        public static ScdAudioEntry ImportOgg( string path, ScdAudioEntry oldEntry, bool processAudio = true)
         {
-            if (Settings.NormalizeVolume)
+            string importPath = path;
+            string? tempPath = null;
+            if (processAudio)
             {
-                FFMpeg.NormalizeVolume(path);
+                tempPath = Path.Combine(Path.GetTempPath(), $"stage-scd-audio-{Guid.NewGuid():N}.ogg");
+                File.Copy(path, tempPath, true);
+                FFMpeg.PrepareScdAudio(tempPath, Settings.NormalizeVolume, Settings.ScdAudioVolume);
+                importPath = tempPath;
             }
-            using (FileStream fs = File.OpenRead(path))
+
+            try
             {
+                using FileStream fs = File.OpenRead(importPath);
                 using var oggReader = new NVorbis.VorbisReader(fs, false);
                 var loopStartTag = oggReader.Tags.GetTagSingle("LoopStart");
                 var loopEndTag = oggReader.Tags.GetTagSingle("LoopEnd");
 
-                var oggData = File.ReadAllBytes(path);
+                var oggData = File.ReadAllBytes(importPath);
 
                 // Create new entry
                 var entry = new ScdAudioEntry(
@@ -199,6 +206,11 @@ namespace VfxEditor.ScdFormat.Music.Data {
                 }
                 entry.Data = vorbis;
                 return entry;
+            }
+            finally
+            {
+                if (!string.IsNullOrWhiteSpace(tempPath) && File.Exists(tempPath))
+                    File.Delete(tempPath);
             }
         }
 
