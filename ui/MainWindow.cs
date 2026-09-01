@@ -55,7 +55,7 @@ namespace STAGE
 
             ApplySystemThemeSafely();
             SetWindowIconSafely();
-            this.Title = AppEnvironment.DisplayName;
+            this.Title = AppEnvironment.DisplayVersion;
 
             _treeContextMenu = BuildContextMenu();
             InitializeActiveModSelector();
@@ -652,7 +652,7 @@ namespace STAGE
         }
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e) => _ = OpenSettingsAsync();
-        private async void HelpButton_Click(object sender, RoutedEventArgs e) => await Windows.System.Launcher.LaunchUriAsync(new Uri("https://discord.gg/solona"));
+        private async void HelpButton_Click(object sender, RoutedEventArgs e) => await Windows.System.Launcher.LaunchUriAsync(new Uri("https://discord.com/invite/jhPaQcvWW"));
         private void NewButton_Click(object sender, RoutedEventArgs e) => _ = OpenNewPlaylistAsync();
         private void DeleteButton_Click(object sender, RoutedEventArgs e) => _ = DoDeleteAsync();
 

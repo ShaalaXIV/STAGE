@@ -12,11 +12,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <ApplicationIcon>stage.ico</ApplicationIcon>
-    <Version>2.1.7</Version>
-    <PackageVersion>2.1.7</PackageVersion>
-    <InformationalVersion>2.1.7</InformationalVersion>
-    <AssemblyVersion>2.1.7.0</AssemblyVersion>
-    <FileVersion>2.1.7.0</FileVersion>
+    <Version>2.1.8</Version>
+    <PackageVersion>2.1.8</PackageVersion>
+    <InformationalVersion>2.1.8</InformationalVersion>
+    <AssemblyVersion>2.1.8.0</AssemblyVersion>
+    <FileVersion>2.1.8.0</FileVersion>
     <PlatformTarget>x86</PlatformTarget>
     <WindowsPackageType>None</WindowsPackageType>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>

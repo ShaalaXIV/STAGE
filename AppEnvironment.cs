@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Reflection;
 
 namespace STAGE
 {
@@ -19,5 +20,16 @@ namespace STAGE
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             LocalAppDataFolderName,
             "crash.log");
+
+        public static string DisplayVersion
+        {
+            get
+            {
+                Version? version = Assembly.GetExecutingAssembly().GetName().Version;
+                return version == null
+                    ? DisplayName
+                    : $"{DisplayName} {version.Major}.{version.Minor}.{version.Build}";
+            }
+        }
     }
 }
