@@ -12,13 +12,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <ApplicationIcon>stage.ico</ApplicationIcon>
-    <Version>2.1.9</Version>
-    <PackageVersion>2.1.9</PackageVersion>
-    <InformationalVersion>2.1.9</InformationalVersion>
-    <AssemblyVersion>2.1.9.0</AssemblyVersion>
-    <FileVersion>2.1.9.0</FileVersion>
+    <Version>2.1.10</Version>
+    <PackageVersion>2.1.10</PackageVersion>
+    <InformationalVersion>2.1.10</InformationalVersion>
+    <AssemblyVersion>2.1.10.0</AssemblyVersion>
+    <FileVersion>2.1.10.0</FileVersion>
     <PlatformTarget>x86</PlatformTarget>
     <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
   </PropertyGroup>
 
@@ -35,7 +36,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.*" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260921001" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.1" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="NAudio.Vorbis" Version="1.5.0" />
