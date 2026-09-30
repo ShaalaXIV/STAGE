@@ -2,8 +2,7 @@
     x:Class="STAGE.YouTubeDownloadDialog"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    x:Uid="YouTubeDlg"
-    Title="Add Songs From YouTube"
+    Title="Add Songs From a Link"
     PrimaryButtonText="Download"
     CloseButtonText="Close"
     PrimaryButtonClick="DownloadButton_Click"
@@ -11,8 +10,8 @@
 
     <StackPanel Spacing="8" MinWidth="480">
 
-        <TextBlock x:Uid="YouTubeUrlLabel" Text="YouTube URL:"/>
-        <TextBox x:Name="UrlTextBox"/>
+        <TextBlock Text="YouTube or SoundCloud URL:"/>
+        <TextBox x:Name="UrlTextBox" PlaceholderText="https://youtube.com/... or https://soundcloud.com/..."/>
 
         <TextBlock x:Uid="ModeLabel" Text="Mode:"/>
         <ComboBox x:Name="ModeComboBox" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="ModeComboBox_SelectionChanged">
@@ -25,13 +24,24 @@
 
         <TextBlock Text="Browser cookies"/>
         <ComboBox x:Name="CookieBrowserComboBox" HorizontalAlignment="Stretch">
-            <ComboBoxItem Content="None"/>
+            <ComboBoxItem Content="Automatic (use saved sign-in only when required)"/>
             <ComboBoxItem Content="Firefox"/>
             <ComboBoxItem Content="Chrome"/>
             <ComboBoxItem Content="Microsoft Edge"/>
         </ComboBox>
-        <TextBlock Text="For age/login blocks, sign into YouTube in that browser first, then pick it here. Chrome/Edge may need to be fully closed first and can fail if Windows will not decrypt the browser cookies."
+        <TextBlock Text="Automatic mode uses cookies received from the VRCVideoCacher Cookies Exporter only after YouTube requests sign-in. Direct browser access remains available, but Chrome/Edge may be blocked by Windows cookie encryption."
                    Opacity="0.7" TextWrapping="Wrap"/>
+
+        <TextBlock Text="SoundCloud account"/>
+        <Grid ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Button x:Name="SoundCloudSignInButton" Content="Sign in to SoundCloud" Click="SoundCloudSignInButton_Click" HorizontalAlignment="Stretch"/>
+            <Button x:Name="SoundCloudSignOutButton" Grid.Column="1" Content="Sign out" Click="SoundCloudSignOutButton_Click" HorizontalAlignment="Stretch"/>
+        </Grid>
+        <TextBlock x:Name="SoundCloudStatusText" TextWrapping="Wrap" Opacity="0.7"/>
 
         <TextBlock Text="Equalizer preset"/>
         <ComboBox x:Name="PresetComboBox" HorizontalAlignment="Stretch"/>

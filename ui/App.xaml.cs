@@ -5,6 +5,7 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Runtime.InteropServices;
+using STAGE.Tools;
 
 namespace STAGE
 {
@@ -34,7 +35,9 @@ namespace STAGE
             {
                 WriteStartupLog("OnLaunched preflight", null);
                 WriteStartupPreflightLog();
+                YtDlpService.StartCookieListener();
                 MainWindow = new MainWindow();
+                MainWindow.Closed += (_, _) => YtDlpService.StopCookieListener();
                 MainWindow.Activate();
             }
             catch (Exception ex)

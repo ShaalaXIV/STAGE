@@ -12,11 +12,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <ApplicationIcon>stage.ico</ApplicationIcon>
-    <Version>2.1.10</Version>
-    <PackageVersion>2.1.10</PackageVersion>
-    <InformationalVersion>2.1.10</InformationalVersion>
-    <AssemblyVersion>2.1.10.0</AssemblyVersion>
-    <FileVersion>2.1.10.0</FileVersion>
+    <Version>2.1.11</Version>
+    <PackageVersion>2.1.11</PackageVersion>
+    <InformationalVersion>2.1.11</InformationalVersion>
+    <AssemblyVersion>2.1.11.0</AssemblyVersion>
+    <FileVersion>2.1.11.0</FileVersion>
     <PlatformTarget>x86</PlatformTarget>
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
@@ -44,6 +44,7 @@
     <PackageReference Include="PersistentCollection" Version="2.0.12" />
     <PackageReference Include="SharpDX" Version="4.2.0" />
     <PackageReference Include="SharpDX.Mathematics" Version="4.2.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.1" />
     <PackageReference Include="Velopack" Version="*" />
   </ItemGroup>
 

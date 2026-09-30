@@ -26,7 +26,8 @@ namespace STAGE
 
             try
             {
-                SetProgressBarText("Importing downloaded YouTube track(s)...");
+                string serviceName = result.Service == MediaService.SoundCloud ? "SoundCloud" : "YouTube";
+                SetProgressBarText($"Importing downloaded {serviceName} track(s)...");
                 SetProgressBarPercent(0);
 
                 if (result.IsPlaylist)
@@ -63,7 +64,7 @@ namespace STAGE
                     }
                 }
 
-                SetProgressBarText("YouTube import complete");
+                SetProgressBarText($"{serviceName} import complete");
                 LoadPlaylists();
                 SetProgressBarPercent(100);
                 ClearProgressDisplay();

@@ -18,6 +18,7 @@ namespace STAGE
         public string Title { get; init; } = string.Empty;
         public string? TargetPlaylistName { get; init; }
         public EqualizerSettings AudioSettings { get; init; } = new();
+        public MediaService Service { get; init; }
     }
 
     public sealed partial class YouTubeDownloadDialog : ContentDialog
@@ -41,6 +42,35 @@ namespace STAGE
             UpdateVolumeLabel();
             LoadTargetPlaylists(preferredPlaylistName);
             UpdateTargetPlaylistState();
+            UpdateSoundCloudStatus();
+        }
+
+        private void UpdateSoundCloudStatus()
+        {
+            bool signedIn = YtDlpService.HasSoundCloudSignIn;
+            SoundCloudStatusText.Text = signedIn
+                ? "Signed in. SoundCloud downloads will use your account session."
+                : "Not signed in. Public SoundCloud tracks and sets still work.";
+            SoundCloudSignInButton.IsEnabled = !signedIn;
+            SoundCloudSignOutButton.IsEnabled = signedIn;
+        }
+
+        private async void SoundCloudSignInButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            if (!SoundCloudLoginDialog.IsWebViewRuntimeAvailable())
+            {
+                SoundCloudStatusText.Text = "The Microsoft Edge WebView2 runtime is required for SoundCloud sign-in.";
+                return;
+            }
+            var dialog = new SoundCloudLoginDialog { XamlRoot = XamlRoot };
+            await dialog.ShowAsync();
+            UpdateSoundCloudStatus();
+        }
+
+        private void SoundCloudSignOutButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            YtDlpService.ClearSoundCloudSignIn();
+            UpdateSoundCloudStatus();
         }
 
         private void LoadTargetPlaylists(string? preferredPlaylistName)
@@ -92,13 +122,13 @@ namespace STAGE
 
         private async void DownloadButton_Click(ContentDialog sender, ContentDialogButtonClickEventArgs args)
         {
-            var url = UrlTextBox.Text?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(url))
+            if (!MediaUrlInfo.TryValidate(UrlTextBox.Text, out var url))
             {
                 args.Cancel = true;
                 StatusLabel.Text = AppStrings.Dlg_EnterYouTubeUrl;
                 return;
             }
+            var service = MediaUrlInfo.Classify(url);
 
             var deferral = args.GetDeferral();
             IsPrimaryButtonEnabled = false;
@@ -160,6 +190,7 @@ namespace STAGE
                     Title = dlResult.Title ?? string.Empty,
                     TargetPlaylistName = mode == YtDownloadMode.Single ? TargetPlaylistComboBox.SelectedItem as string : null,
                     AudioSettings = audioSettings,
+                    Service = service,
                 };
                 Settings.EqualizerPreset = (EqualizerPreset)Math.Clamp(
                     PresetComboBox.SelectedIndex, 0, EqualizerSettings.PresetNames.Length - 1);
@@ -171,7 +202,16 @@ namespace STAGE
             }
             catch (Exception ex)
             {
-                StatusLabel.Text = AppStrings.YTDownloadFailed(ex.Message);
+                if (service == MediaService.YouTube && YtDlpService.LooksLikeAuthenticationFailure(ex.Message))
+                {
+                    StatusLabel.Text = YtDlpService.GetCookieStatus() == CookieStatus.Expired
+                        ? "This video requires YouTube sign-in, but the saved cookies are expired. Re-export them with the VRCVideoCacher Cookies Exporter extension."
+                        : "This video requires YouTube sign-in. Install or run the VRCVideoCacher Cookies Exporter extension while S.T.A.G.E. is open, then try again.";
+                }
+                else
+                {
+                    StatusLabel.Text = AppStrings.YTDownloadFailed(ex.Message);
+                }
                 IsPrimaryButtonEnabled = true;
                 args.Cancel = true;
             }

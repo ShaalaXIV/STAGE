@@ -1,4 +1,6 @@
 using Microsoft.Win32;
+using System.Security.Cryptography;
+using System.Text;
 using STAGE.Tools;
 using STAGE.Utils;
 using System;
@@ -351,6 +353,41 @@ namespace STAGE
             {
                 using var key = Registry.CurrentUser.CreateSubKey(s_subKey);
                 key?.SetValue("YouTubeCookieBrowser", (int)value, RegistryValueKind.DWord);
+            }
+        }
+
+        private const string SoundCloudTokenValueName = "SoundCloudToken";
+
+        public static bool HasSoundCloudToken =>
+            !string.IsNullOrEmpty(Registry.CurrentUser.OpenSubKey(s_subKey)?.GetValue(SoundCloudTokenValueName, "") as string);
+
+        public static string SoundCloudToken
+        {
+            get
+            {
+                string? stored = Registry.CurrentUser.OpenSubKey(s_subKey)?.GetValue(SoundCloudTokenValueName, "") as string;
+                if (string.IsNullOrEmpty(stored)) return string.Empty;
+                try
+                {
+                    byte[] plain = ProtectedData.Unprotect(Convert.FromBase64String(stored), null, DataProtectionScope.CurrentUser);
+                    return Encoding.UTF8.GetString(plain);
+                }
+                catch
+                {
+                    try { SoundCloudToken = string.Empty; } catch { }
+                    return string.Empty;
+                }
+            }
+            set
+            {
+                using var key = Registry.CurrentUser.CreateSubKey(s_subKey);
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    key?.DeleteValue(SoundCloudTokenValueName, throwOnMissingValue: false);
+                    return;
+                }
+                byte[] encrypted = ProtectedData.Protect(Encoding.UTF8.GetBytes(value.Trim()), null, DataProtectionScope.CurrentUser);
+                key?.SetValue(SoundCloudTokenValueName, Convert.ToBase64String(encrypted), RegistryValueKind.String);
             }
         }
 

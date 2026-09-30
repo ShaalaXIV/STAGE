@@ -1,5 +1,10 @@
 using Newtonsoft.Json.Linq;
 using System.Diagnostics;
+using System.IO.Compression;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using STAGE.Utils;
 
 namespace STAGE.Tools;
 
@@ -24,6 +29,14 @@ public enum YtCookieBrowser
     Edge
 }
 
+public enum CookieStatus
+{
+    NotFound,
+    Valid,
+    Expired,
+    Invalid
+}
+
 public sealed class YtDlpProgressInfo
 {
     public required string Stage { get; init; }
@@ -39,12 +52,165 @@ public static class YtDlpService
     private static readonly TimeSpan UpdateTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan MetadataTimeout = TimeSpan.FromSeconds(90);
     private static readonly TimeSpan DownloadTimeout = TimeSpan.FromMinutes(30);
-    private static readonly string ToolDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "STAGE", "current", "tools");
+    // Keep downloaded tools and authentication outside Velopack's replaceable "current" folder.
+    private static readonly string ToolDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "STAGE", "tools");
+    private static readonly string LegacyToolDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "STAGE", "current", "tools");
     private static readonly string LocalYtDlpPath = Path.Combine(ToolDirectory, YtDlpExeName);
+    private static readonly string CookiesSavePath = Path.Combine(ToolDirectory, "cookies.txt");
+    private static readonly string DenoExePath = Path.Combine(ToolDirectory, "deno.exe");
+    private static readonly string DenoZipPath = Path.Combine(ToolDirectory, "deno.zip");
+    private static string? _cookiesPath;
+    private static TcpListener? _cookieListener;
+    private static Thread? _cookieListenerThread;
+    private static volatile bool _isListeningForCookies;
+
+    public static bool HasCookies => !string.IsNullOrEmpty(_cookiesPath) && File.Exists(_cookiesPath);
+    public static bool HasSoundCloudSignIn => Settings.HasSoundCloudToken;
+    public static string WebViewDataDirectory
+    {
+        get
+        {
+            string path = Path.Combine(ToolDirectory, "webview2");
+            Directory.CreateDirectory(path);
+            return path;
+        }
+    }
+
+    public static void ClearSoundCloudSignIn()
+    {
+        Settings.SoundCloudToken = string.Empty;
+        try
+        {
+            string path = Path.Combine(ToolDirectory, "webview2");
+            if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+        }
+        catch { }
+    }
+
+    public static CookieStatus GetCookieStatus()
+    {
+        if (!HasCookies)
+            return CookieStatus.NotFound;
+
+        try
+        {
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            bool sawCookie = false;
+            long latestExpiry = 0;
+            foreach (string rawLine in File.ReadLines(_cookiesPath!))
+            {
+                string line = rawLine.Trim();
+                if (line.Length == 0 || line.StartsWith('#'))
+                    continue;
+                string[] fields = line.Split('\t');
+                if (fields.Length < 7)
+                    continue;
+                sawCookie = true;
+                if (long.TryParse(fields[4], out long expiry) && expiry > latestExpiry)
+                    latestExpiry = expiry;
+            }
+            if (!sawCookie) return CookieStatus.Invalid;
+            if (latestExpiry > 0 && latestExpiry < now) return CookieStatus.Expired;
+            return CookieStatus.Valid;
+        }
+        catch { return CookieStatus.Invalid; }
+    }
+
+    public static void StartCookieListener()
+    {
+        MigrateLegacyFiles();
+        _cookiesPath = FindCookiesFile();
+        try
+        {
+            _cookieListener = new TcpListener(IPAddress.Loopback, 9696);
+            _cookieListener.Start();
+            _isListeningForCookies = true;
+            _cookieListenerThread = new Thread(CookieListenerLoop)
+            {
+                IsBackground = true,
+                Name = "VRCVideoCacherCookieListener"
+            };
+            _cookieListenerThread.Start();
+        }
+        catch { }
+    }
+
+    public static void StopCookieListener()
+    {
+        _isListeningForCookies = false;
+        try { _cookieListener?.Stop(); } catch { }
+    }
+
+    private static string? FindCookiesFile()
+    {
+        if (File.Exists(CookiesSavePath)) return CookiesSavePath;
+        string shared = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VRCVideoCacher", "youtube_cookies.txt");
+        return File.Exists(shared) ? shared : null;
+    }
+
+    private static void CookieListenerLoop()
+    {
+        while (_isListeningForCookies && _cookieListener != null)
+        {
+            try
+            {
+                using var client = _cookieListener.AcceptTcpClient();
+                client.ReceiveTimeout = 5000;
+                using var stream = client.GetStream();
+                using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
+                int contentLength = 0;
+                bool isPost = false;
+                string? line;
+                while (!string.IsNullOrEmpty(line = reader.ReadLine()))
+                {
+                    if (line.StartsWith("POST ", StringComparison.OrdinalIgnoreCase)) isPost = true;
+                    if (line.StartsWith("Content-Length:", StringComparison.OrdinalIgnoreCase))
+                        int.TryParse(line[15..].Trim(), out contentLength);
+                }
+
+                if (isPost && contentLength is > 0 and <= 2_000_000)
+                {
+                    char[] chars = new char[contentLength];
+                    int read = reader.ReadBlock(chars, 0, contentLength);
+                    string body = new(chars, 0, read);
+                    if (body.Contains(".youtube.com", StringComparison.OrdinalIgnoreCase) && body.Contains('\t'))
+                    {
+                        Directory.CreateDirectory(ToolDirectory);
+                        string tempPath = CookiesSavePath + ".tmp";
+                        File.WriteAllText(tempPath, body, Encoding.UTF8);
+                        File.Move(tempPath, CookiesSavePath, overwrite: true);
+                        _cookiesPath = CookiesSavePath;
+                    }
+                }
+
+                byte[] response = Encoding.UTF8.GetBytes("HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nConnection: close\r\nContent-Length: 2\r\n\r\nOK");
+                stream.Write(response);
+            }
+            catch (SocketException) when (!_isListeningForCookies) { break; }
+            catch { }
+        }
+    }
+
+    private static void MigrateLegacyFiles()
+    {
+        try
+        {
+            Directory.CreateDirectory(ToolDirectory);
+            foreach (string name in new[] { YtDlpExeName, "cookies.txt" })
+            {
+                string oldPath = Path.Combine(LegacyToolDirectory, name);
+                string newPath = Path.Combine(ToolDirectory, name);
+                if (File.Exists(oldPath) && !File.Exists(newPath))
+                    File.Copy(oldPath, newPath);
+            }
+        }
+        catch { }
+    }
 
     public static async Task EnsureUpToDateAsync()
     {
         Directory.CreateDirectory(ToolDirectory);
+        MigrateLegacyFiles();
         if (!File.Exists(LocalYtDlpPath))
         {
             string bundledPath = GetBundledYtDlpPath();
@@ -56,14 +222,24 @@ public static class YtDlpService
             {
                 using var client = new HttpClient { Timeout = NetworkTimeout };
                 client.DefaultRequestHeaders.UserAgent.ParseAdd("STAGE/1.0");
-                var bytes = await client.GetByteArrayAsync("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe");
+                var bytes = await client.GetByteArrayAsync("https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp.exe");
                 await File.WriteAllBytesAsync(LocalYtDlpPath, bytes);
             }
         }
 
+        if (!File.Exists(DenoExePath))
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("STAGE/1.0");
+            var bytes = await client.GetByteArrayAsync("https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip");
+            await File.WriteAllBytesAsync(DenoZipPath, bytes);
+            await Task.Run(() => ZipFile.ExtractToDirectory(DenoZipPath, ToolDirectory, overwriteFiles: true));
+            try { File.Delete(DenoZipPath); } catch { }
+        }
+
         try
         {
-            await RunYtDlpAsync("-U", UpdateTimeout);
+            await RunYtDlpAsync("--update-to nightly", UpdateTimeout);
         }
         catch
         {
@@ -90,6 +266,36 @@ public static class YtDlpService
         YtCookieBrowser cookieBrowser = YtCookieBrowser.None,
         Action<YtDlpProgressInfo>? onProgress = null)
     {
+        var service = MediaUrlInfo.Classify(url);
+        if (service == MediaService.SoundCloud)
+        {
+            string? jar = CreateSoundCloudCookieJar();
+            try
+            {
+                return await DownloadAudioCoreAsync(url, outputDirectory, mode, YtCookieBrowser.None, onProgress, cookieFilePath: jar);
+            }
+            finally
+            {
+                if (!string.IsNullOrEmpty(jar)) try { File.Delete(jar); } catch { }
+            }
+        }
+
+        // Browser selection remains available as a manual override. Automatic mode first
+        // tries the public video, then uses the cookie jar supplied by VRCVideoCacher only
+        // when yt-dlp reports a YouTube sign-in/age restriction.
+        if (cookieBrowser == YtCookieBrowser.None)
+        {
+            try
+            {
+                return await DownloadAudioCoreAsync(url, outputDirectory, mode, cookieBrowser, onProgress);
+            }
+            catch (InvalidOperationException ex) when (GetCookieStatus() == CookieStatus.Valid && LooksLikeAuthenticationFailure(ex.Message))
+            {
+                onProgress?.Invoke(new YtDlpProgressInfo { Stage = "Retrying with saved YouTube sign-in", Current = 1, Total = 1 });
+                return await DownloadAudioCoreAsync(url, outputDirectory, mode, cookieBrowser, onProgress, useSavedCookies: true);
+            }
+        }
+
         try
         {
             return await DownloadAudioCoreAsync(url, outputDirectory, mode, cookieBrowser, onProgress);
@@ -117,14 +323,21 @@ public static class YtDlpService
         string outputDirectory,
         YtDownloadMode mode,
         YtCookieBrowser cookieBrowser,
-        Action<YtDlpProgressInfo>? onProgress)
+        Action<YtDlpProgressInfo>? onProgress,
+        bool useSavedCookies = false,
+        string? cookieFilePath = null)
     {
         Directory.CreateDirectory(outputDirectory);
         string playlistFlag = mode == YtDownloadMode.Playlist ? "--yes-playlist" : "--no-playlist";
-        string cookieArgument = GetCookieArgument(cookieBrowser);
+        string cookieArgument = !string.IsNullOrEmpty(cookieFilePath)
+            ? $"--cookies \"{cookieFilePath}\""
+            : useSavedCookies && HasCookies
+                ? $"--cookies \"{_cookiesPath}\""
+                : GetCookieArgument(cookieBrowser);
+        string denoArgument = File.Exists(DenoExePath) ? $"--js-runtimes \"deno:{DenoExePath}\"" : string.Empty;
 
         var infoJson = await RunYtDlpAsync(
-            $"--dump-single-json --no-warnings --skip-download -f \"bestaudio/best\" {cookieArgument} {playlistFlag} \"{url}\"",
+            $"--dump-single-json --flat-playlist --no-warnings --skip-download -f \"bestaudio/best\" {denoArgument} {cookieArgument} {playlistFlag} -- \"{url}\"",
             MetadataTimeout);
         var parsed = JObject.Parse(infoJson);
         var title = parsed.Value<string>("title") ?? "YouTube Download";
@@ -134,7 +347,7 @@ public static class YtDlpService
         string template = "%(title)s.%(ext)s";
         await RunYtDlpWithProgressAsync(
             $"-f \"bestaudio/best\" -x --audio-format vorbis --audio-quality 5 --newline --no-warnings " +
-            $"{cookieArgument} {playlistFlag} -o \"{Path.Combine(outputDirectory, template)}\" \"{url}\"",
+            $"{denoArgument} {cookieArgument} {playlistFlag} -o \"{Path.Combine(outputDirectory, template)}\" -- \"{url}\"",
             totalItems,
             onProgress);
 
@@ -159,6 +372,39 @@ public static class YtDlpService
                message.Contains("Failed to decrypt with DPAPI", StringComparison.OrdinalIgnoreCase) ||
                message.Contains("Permission denied", StringComparison.OrdinalIgnoreCase) &&
                message.Contains("Network\\Cookies", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool LooksLikeAuthenticationFailure(string message)
+    {
+        return message.Contains("Sign in to confirm your age", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("age-restricted", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("Sign in to confirm you're not a bot", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("members-only", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("private video", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("cookies", StringComparison.OrdinalIgnoreCase) &&
+               message.Contains("authentication", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? CreateSoundCloudCookieJar()
+    {
+        string token = Settings.SoundCloudToken;
+        if (string.IsNullOrEmpty(token)) return null;
+        try
+        {
+            string path = Path.Combine(Path.GetTempPath(), $"stage-sc-{Guid.NewGuid():N}.txt");
+            long expiry = DateTimeOffset.UtcNow.AddYears(1).ToUnixTimeSeconds();
+            var text = new StringBuilder()
+                .AppendLine("# Netscape HTTP Cookie File")
+                .AppendLine($".soundcloud.com\tTRUE\t/\tTRUE\t{expiry}\toauth_token\t{token}")
+                .ToString();
+            File.WriteAllText(path, text);
+            return path;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Could not prepare SoundCloud sign-in: {Error}", ex.Message);
+            return null;
+        }
     }
 
     private static string GetBrowserDisplayName(YtCookieBrowser browser)
