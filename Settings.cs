@@ -451,8 +451,7 @@ namespace STAGE
         }
 
         public static readonly string DefaultBackgroundImagePath = System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            AppEnvironment.LocalAppDataFolderName, "current", "ui", "stagebackground.png");
+            AppContext.BaseDirectory, "ui", "stagebackground.png");
 
         public static string BackgroundImagePath
         {
@@ -471,7 +470,9 @@ namespace STAGE
                 if (!string.IsNullOrWhiteSpace(saved) && File.Exists(saved))
                     return saved;
 
-                return DefaultBackgroundImagePath;
+                return File.Exists(DefaultBackgroundImagePath)
+                    ? DefaultBackgroundImagePath
+                    : string.Empty;
             }
             set
             {

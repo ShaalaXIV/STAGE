@@ -449,7 +449,7 @@ namespace STAGE
                 MessageBox(
                     WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow),
                     "Settings were applied.\n\n" +
-                    $"Background: {(string.IsNullOrWhiteSpace(backgroundPath) ? "Not set" : backgroundPath)}\n" +
+                    $"Background: {(string.IsNullOrWhiteSpace(backgroundPath) ? "Default theme" : backgroundPath)}\n" +
                     $"Donor SCD basis: {(string.IsNullOrWhiteSpace(donorScdPath) ? "Not set" : donorScdPath)}\n" +
                     $"Donor PAP basis: {(string.IsNullOrWhiteSpace(donorPapPath) ? "Not set" : donorPapPath)}",
                     "Settings Applied",
