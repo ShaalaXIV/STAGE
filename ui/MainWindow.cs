@@ -112,6 +112,8 @@ namespace STAGE
                 Settings.ActiveVfxModFolder = path;
             else
                 Settings.ActiveAudioModFolder = path;
+            ModProfile profile = ModProfileDetector.Detect(path);
+            App.WriteStartupText("Mod profile detected", $"{profile.DisplayName}: {path}");
             ResetForActiveModChange();
         }
 

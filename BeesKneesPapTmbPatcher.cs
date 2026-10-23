@@ -164,6 +164,42 @@ namespace STAGE
             return new PapInspection(papPath, bytes.LongLength, animations);
         }
 
+        public static int MakeSilentSingleVfxLoop(
+            string papPath,
+            string vfxGamePath,
+            string sourcePathFragment = "hopstep")
+        {
+            if (!File.Exists(papPath))
+                throw new FileNotFoundException("Could not find the PAP file.", papPath);
+            if (string.IsNullOrWhiteSpace(vfxGamePath) ||
+                !vfxGamePath.EndsWith(".avfx", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("Choose a valid AVFX game path.", nameof(vfxGamePath));
+
+            var pap = PapDocument.Parse(File.ReadAllBytes(papPath));
+            int replacedReferences = 0;
+            foreach (PapAnimation animation in pap.Animations)
+            {
+                var tmb = TmbDocument.Parse(animation.TmbBytes);
+                tmb.RemoveSoundReferenceTracks();
+                replacedReferences += tmb.ConsolidateAvfxTracks(
+                    sourcePathFragment,
+                    vfxGamePath);
+                animation.TmbBytes = tmb.ToBytes();
+            }
+
+            string temporaryPath = papPath + ".stage-writing";
+            try
+            {
+                File.WriteAllBytes(temporaryPath, pap.ToBytes());
+                File.Move(temporaryPath, papPath, true);
+            }
+            finally
+            {
+                if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            }
+            return replacedReferences;
+        }
+
         private static string GetTrackBundlePath(string fileName)
         {
             return Path.Combine(AppContext.BaseDirectory, "Assets", "TmbTrackBundles", "BeesKnees", fileName);
@@ -690,6 +726,43 @@ namespace STAGE
                 _entries.RemoveAll(entry => soundEntries.Contains(entry) && !stillReferenced.Contains(entry));
             }
 
+            public int ConsolidateAvfxTracks(
+                string sourcePathFragment,
+                string gamePath)
+            {
+                var allVfxEntries = _entries
+                    .Where(entry => entry.HasAvfxReference())
+                    .ToHashSet();
+                var selectedEntries = allVfxEntries
+                    .Where(entry => entry.HasAvfxReferenceContaining(sourcePathFragment))
+                    .ToHashSet();
+                if (selectedEntries.Count == 0)
+                    throw new InvalidDataException(
+                        $"The embedded TMB has no AVFX reference containing '{sourcePathFragment}'.");
+
+                var allVfxTracks = _tracks
+                    .Where(track => track.References.Any(allVfxEntries.Contains))
+                    .ToHashSet();
+                var retainedVfxTracks = allVfxTracks
+                    .Where(track => track.References.Any(selectedEntries.Contains))
+                    .ToHashSet();
+
+                var removedTracks = allVfxTracks
+                    .Where(track => !retainedVfxTracks.Contains(track))
+                    .ToHashSet();
+                _tracks.RemoveAll(removedTracks.Contains);
+                foreach (var actor in _actors)
+                    actor.References.RemoveAll(removedTracks.Contains);
+
+                int replaced = 0;
+                foreach (TmbItem entry in retainedVfxTracks.SelectMany(track => track.References).Distinct())
+                    replaced += entry.ReplaceAvfxReferences(gamePath);
+
+                var stillReferenced = _tracks.SelectMany(track => track.References).ToHashSet();
+                _entries.RemoveAll(entry => allVfxEntries.Contains(entry) && !stillReferenced.Contains(entry));
+                return replaced;
+            }
+
             public byte[] ToBytes()
             {
                 RefreshIds();
@@ -863,6 +936,29 @@ namespace STAGE
                 GetStringField(32).StartsWith(
                     "cfxf_",
                     StringComparison.OrdinalIgnoreCase);
+
+            public int ReplaceAvfxReferences(string gamePath)
+            {
+                int replaced = 0;
+                foreach (int key in _strings.Keys.ToArray())
+                {
+                    if (_strings[key].EndsWith(".avfx", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _strings[key] = gamePath;
+                        replaced++;
+                    }
+                }
+                return replaced;
+            }
+
+            public bool HasAvfxReference() =>
+                _strings.Values.Any(value =>
+                    value.EndsWith(".avfx", StringComparison.OrdinalIgnoreCase));
+
+            public bool HasAvfxReferenceContaining(string fragment) =>
+                _strings.Values.Any(value =>
+                    value.EndsWith(".avfx", StringComparison.OrdinalIgnoreCase) &&
+                    value.Contains(fragment, StringComparison.OrdinalIgnoreCase));
 
             public void Write(TmbPayloadWriter writer)
             {

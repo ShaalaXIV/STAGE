@@ -62,7 +62,7 @@ public sealed partial class SoundCloudLoginDialog : ContentDialog
         {
             var cookies = await LoginWebView.CoreWebView2.CookieManager.GetCookiesAsync("https://soundcloud.com");
             var token = cookies.FirstOrDefault(c => c.Name == "oauth_token");
-            if (token == null || string.IsNullOrWhiteSpace(token.Value) || token.Value.Length < 20 || !token.Value.Contains('-')) return;
+            if (token == null || string.IsNullOrWhiteSpace(token.Value) || token.Value.Length < 16) return;
             Settings.SoundCloudToken = token.Value;
             SignedIn = true;
             _pollTimer?.Stop();

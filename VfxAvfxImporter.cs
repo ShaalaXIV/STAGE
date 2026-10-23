@@ -59,7 +59,7 @@ namespace STAGE
         private static AvfxImportResult ImportIntoSlotGroup(AvfxImportRequest request, string modDirectory, string localPath)
         {
             var group = LoadOrCreateSlotGroup(request.GroupPath, request.SlotNumber);
-            string gamePath = $"vfx/slot{request.SlotNumber}.avfx";
+            string gamePath = ResolveGamePath(group, request.SlotNumber);
 
             var option = new Option
             {
@@ -155,7 +155,7 @@ namespace STAGE
             if (PenumbraMeta.TryLoad(modDirectory, out var meta))
             {
                 return meta!.Groups
-                    .Where(group => group.Kind == VfxPapGroupKind.VfxSlot)
+                    .Where(IsVfxImportGroup)
                     .Select(group => group.FilePath)
                     .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
                     .ToList();
@@ -167,7 +167,7 @@ namespace STAGE
                     try
                     {
                         var group = JsonConvert.DeserializeObject<VfxPapGroup>(File.ReadAllText(path));
-                        return group?.Kind == VfxPapGroupKind.VfxSlot;
+                        return group != null && IsVfxImportGroup(group);
                     }
                     catch
                     {
@@ -370,6 +370,42 @@ namespace STAGE
                 .TakeWhile(char.IsDigit)
                 .ToArray());
             return int.TryParse(numberText, out int slot) ? Math.Clamp(slot, 1, 6) : 1;
+        }
+
+        private static bool IsVfxImportGroup(VfxPapGroup group)
+        {
+            if (VfxPapGroup.IsAudioPlaylistGroup(group))
+                return false;
+
+            var gamePaths = group.Options
+                .SelectMany(option => option.Files?.Keys ?? Enumerable.Empty<string>())
+                .ToList();
+
+            // Animation carriers can also spawn AVFX, but importing a standalone effect into
+            // those groups would replace only part of a coupled PAP option.
+            if (gamePaths.Any(path =>
+                    path.EndsWith(".pap", StringComparison.OrdinalIgnoreCase) ||
+                    path.EndsWith(".tmb", StringComparison.OrdinalIgnoreCase)))
+                return false;
+
+            return gamePaths.Any(path => path.EndsWith(".avfx", StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static string ResolveGamePath(VfxPapGroup group, int slotNumber)
+        {
+            var avfxPaths = group.Options
+                .SelectMany(option => option.Files?.Keys ?? Enumerable.Empty<string>())
+                .Where(path => path.EndsWith(".avfx", StringComparison.OrdinalIgnoreCase))
+                .Select(ModProfileDetector.NormalizeGamePath)
+                .GroupBy(path => path, StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(paths => paths.Count())
+                .ThenBy(paths => paths.Key, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (avfxPaths.Count > 0)
+                return avfxPaths[0].Key;
+
+            return $"vfx/slot{slotNumber}.avfx";
         }
     }
 }

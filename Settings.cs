@@ -206,8 +206,13 @@ namespace STAGE
             AddManagedModFolder(normalized);
             if (Directory.Exists(normalized))
             {
+                ModProfile profile = ModProfileDetector.Detect(normalized);
                 if (PenumbraMeta.ContainsAudioGroups(normalized))
+                {
                     ActiveAudioModFolder = normalized;
+                    if (!string.IsNullOrWhiteSpace(profile.BaselineScdKey))
+                        BaselineScdKey = profile.BaselineScdKey;
+                }
                 if (PenumbraMeta.ContainsVfxGroups(normalized))
                     ActiveVfxModFolder = normalized;
             }

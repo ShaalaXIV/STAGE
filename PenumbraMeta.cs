@@ -222,12 +222,36 @@ namespace STAGE
         }
 
         public static bool ContainsAudioGroups(string modDirectory) =>
-            TryLoad(modDirectory, out var meta) &&
-            meta!.Groups.Any(VfxPapGroup.IsAudioPlaylistGroup);
+            ReadGroupsForInspection(modDirectory).Any(VfxPapGroup.IsAudioPlaylistGroup);
 
         public static bool ContainsVfxGroups(string modDirectory) =>
-            TryLoad(modDirectory, out var meta) &&
-            meta!.Groups.Any(group => !VfxPapGroup.IsAudioPlaylistGroup(group));
+            ReadGroupsForInspection(modDirectory).Any(group => !VfxPapGroup.IsAudioPlaylistGroup(group));
+
+        private static IReadOnlyList<VfxPapGroup> ReadGroupsForInspection(string modDirectory)
+        {
+            if (TryLoad(modDirectory, out var meta))
+                return meta!.Groups;
+
+            var groups = new List<VfxPapGroup>();
+            foreach (string groupPath in Directory.GetFiles(modDirectory, "group_*.json")
+                         .OrderBy(path => path, NaturalStringComparer.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var group = JsonConvert.DeserializeObject<VfxPapGroup>(File.ReadAllText(groupPath));
+                    if (group == null)
+                        continue;
+                    group.FilePath = groupPath;
+                    group.Options ??= new List<Option>();
+                    groups.Add(group);
+                }
+                catch
+                {
+                    // A malformed group cannot safely prove that this mod has the capability.
+                }
+            }
+            return groups;
+        }
 
         public static string EnsureGuid(string? value)
         {

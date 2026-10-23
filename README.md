@@ -10,6 +10,8 @@ S.T.A.G.E. is a Windows tool for managing FFXIV animation, VFX, and audio mods.
 4. Add playlists and songs from the main window. Right-click entries to access animation, expression, VFX, and PAP tools.
 5. Use **Settings → Maintenance** to organize the mod or create and restore backups before broad changes.
 
+S.T.A.G.E. recognizes Pickles, Thunderdome, Cass Base, Shaala DJ, and Yue & Lu's DJ layouts. The link downloader accepts YouTube videos/playlists and SoundCloud tracks/sets; optional sign-in is available for restricted media.
+
 > **Note:** Expression modification is experimental and may not work in its current state. Back up your mod before using it.
 
 ## Build

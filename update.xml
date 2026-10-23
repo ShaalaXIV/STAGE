@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <item>
-  <version>2.1.11</version>
+  <version>2.1.12</version>
   <url>https://github.com/ShaalaXIV/STAGE/releases/latest/download/STAGE.zip</url>
   <!-- Changelog can be plain text or HTML. Use CDATA to include markup safely. -->
   <changelog>
     <![CDATA[
-    <h3>What's new in 2.1.11</h3>
+    <h3>What's new in 2.1.12</h3>
     <ul>
-      <li>Reworks YouTube downloads with current yt-dlp nightly builds, Deno, and saved-cookie authentication for age-restricted videos.</li>
-      <li>Adds SoundCloud track and set downloads with optional in-app account sign-in.</li>
+      <li>Adds automatic import profiles for Pickles, Thunderdome, Cass Base, Shaala DJ, and Yue &amp; Lu's DJ.</li>
+      <li>Routes animation, VFX, and audio imports using each detected mod's existing replacement paths.</li>
+      <li>Improves YouTube and SoundCloud downloads by using the bundled FFmpeg and accepting current SoundCloud sign-in cookies.</li>
     </ul>
     <p>For full details see the release page: https://github.com/ShaalaXIV/STAGE/releases</p>
   ]]>

@@ -94,9 +94,10 @@ namespace STAGE
             string modDirectory = GetModDirectory();
             Directory.CreateDirectory(modDirectory);
 
+            ModProfile profile = ModProfileDetector.Detect(modDirectory);
             string preferredName = mode == PapImportMode.StartAndLoop
-                ? StepdanceGroupName
-                : BeesKneesGroupName;
+                ? profile.StartLoopAnimationGroup ?? StepdanceGroupName
+                : profile.LoopAnimationGroup ?? BeesKneesGroupName;
 
             if (PenumbraMeta.TryLoad(modDirectory, out var meta))
             {

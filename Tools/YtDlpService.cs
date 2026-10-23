@@ -59,6 +59,7 @@ public static class YtDlpService
     private static readonly string CookiesSavePath = Path.Combine(ToolDirectory, "cookies.txt");
     private static readonly string DenoExePath = Path.Combine(ToolDirectory, "deno.exe");
     private static readonly string DenoZipPath = Path.Combine(ToolDirectory, "deno.zip");
+    private static readonly string BundledFfmpegPath = Path.Combine(AppContext.BaseDirectory, "ffmpeg.exe");
     private static string? _cookiesPath;
     private static TcpListener? _cookieListener;
     private static Thread? _cookieListenerThread;
@@ -335,6 +336,9 @@ public static class YtDlpService
                 ? $"--cookies \"{_cookiesPath}\""
                 : GetCookieArgument(cookieBrowser);
         string denoArgument = File.Exists(DenoExePath) ? $"--js-runtimes \"deno:{DenoExePath}\"" : string.Empty;
+        string ffmpegArgument = File.Exists(BundledFfmpegPath)
+            ? $"--ffmpeg-location \"{BundledFfmpegPath}\""
+            : string.Empty;
 
         var infoJson = await RunYtDlpAsync(
             $"--dump-single-json --flat-playlist --no-warnings --skip-download -f \"bestaudio/best\" {denoArgument} {cookieArgument} {playlistFlag} -- \"{url}\"",
@@ -346,7 +350,7 @@ public static class YtDlpService
 
         string template = "%(title)s.%(ext)s";
         await RunYtDlpWithProgressAsync(
-            $"-f \"bestaudio/best\" -x --audio-format vorbis --audio-quality 5 --newline --no-warnings " +
+            $"-f \"bestaudio/best\" -x --audio-format vorbis --audio-quality 5 --newline --no-warnings {ffmpegArgument} " +
             $"{denoArgument} {cookieArgument} {playlistFlag} -o \"{Path.Combine(outputDirectory, template)}\" -- \"{url}\"",
             totalItems,
             onProgress);

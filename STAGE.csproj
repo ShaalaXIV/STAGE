@@ -12,16 +12,23 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <ApplicationIcon>stage.ico</ApplicationIcon>
-    <Version>2.1.11</Version>
-    <PackageVersion>2.1.11</PackageVersion>
-    <InformationalVersion>2.1.11</InformationalVersion>
-    <AssemblyVersion>2.1.11.0</AssemblyVersion>
-    <FileVersion>2.1.11.0</FileVersion>
+    <Version>2.1.12</Version>
+    <PackageVersion>2.1.12</PackageVersion>
+    <InformationalVersion>2.1.12</InformationalVersion>
+    <AssemblyVersion>2.1.12.0</AssemblyVersion>
+    <FileVersion>2.1.12.0</FileVersion>
     <PlatformTarget>x86</PlatformTarget>
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Standalone development utilities are separate projects and must not
+         be compiled into the WinUI application by the SDK's recursive glob. -->
+    <Compile Remove="Tools\PapTransform\**\*.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <Content Include="stage.ico" />
