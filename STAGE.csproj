@@ -12,11 +12,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <ApplicationIcon>stage.ico</ApplicationIcon>
-    <Version>2.1.12</Version>
-    <PackageVersion>2.1.12</PackageVersion>
-    <InformationalVersion>2.1.12</InformationalVersion>
-    <AssemblyVersion>2.1.12.0</AssemblyVersion>
-    <FileVersion>2.1.12.0</FileVersion>
+    <Version>2.1.13</Version>
+    <PackageVersion>2.1.13</PackageVersion>
+    <InformationalVersion>2.1.13</InformationalVersion>
+    <AssemblyVersion>2.1.13.0</AssemblyVersion>
+    <FileVersion>2.1.13.0</FileVersion>
     <PlatformTarget>x86</PlatformTarget>
     <RuntimeIdentifier>win-x86</RuntimeIdentifier>
     <WindowsPackageType>None</WindowsPackageType>

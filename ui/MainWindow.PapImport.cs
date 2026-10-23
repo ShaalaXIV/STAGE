@@ -13,13 +13,12 @@ namespace STAGE
             string? singlePapPath = null;
             string? startPapPath = null;
             string? loopPapPath = null;
-            string? templatePapPath = File.Exists(Settings.DefaultDonorPapPath)
-                ? Settings.DefaultDonorPapPath
-                : null;
+            string? templatePapPath = null;
+            bool usingProfileDonor = false;
 
             var groupPaths = VfxPapImporter.GetPapImportGroupPaths();
             string defaultGroupPath = VfxPapImporter.SuggestedDefaultGroupPath(mode);
-            if (groupPaths.Count == 0 && !groupPaths.Contains(defaultGroupPath, StringComparer.OrdinalIgnoreCase))
+            if (!groupPaths.Contains(defaultGroupPath, StringComparer.OrdinalIgnoreCase))
                 groupPaths.Insert(0, defaultGroupPath);
 
             var optionNameBox = new TextBox
@@ -33,7 +32,10 @@ namespace STAGE
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 ItemsSource = groupPaths.Select(path => new PapImportGroupChoice(path)).ToList()
             };
-            groupCombo.SelectedIndex = 0;
+            groupCombo.SelectedItem = ((System.Collections.Generic.IEnumerable<PapImportGroupChoice>)groupCombo.ItemsSource)
+                .FirstOrDefault(choice => string.Equals(choice.Path, defaultGroupPath, StringComparison.OrdinalIgnoreCase));
+            if (groupCombo.SelectedItem == null)
+                groupCombo.SelectedIndex = 0;
 
             var singlePapBox = new TextBox
             {
@@ -73,8 +75,31 @@ namespace STAGE
             var openAnimationSettingsButton = new Button
             {
                 Content = "Open Animation Settings",
-                Visibility = templatePapPath == null ? Visibility.Visible : Visibility.Collapsed
+                Visibility = Visibility.Collapsed
             };
+            var donorStatusText = new TextBlock { TextWrapping = TextWrapping.Wrap };
+
+            void ResolveDonor()
+            {
+                templatePapPath = null;
+                usingProfileDonor = false;
+                if (groupCombo.SelectedItem is PapImportGroupChoice choice)
+                {
+                    templatePapPath = ModProfileDetector.ResolvePapDonor(Settings.VfxModFolder, choice.Path);
+                    usingProfileDonor = !string.IsNullOrWhiteSpace(templatePapPath);
+                }
+                if (string.IsNullOrWhiteSpace(templatePapPath) && File.Exists(Settings.DefaultDonorPapPath))
+                    templatePapPath = Settings.DefaultDonorPapPath;
+
+                donorStatusText.Text = templatePapPath == null
+                    ? "No donor animation was found. Assign the correct base profile above or configure a fallback under Settings → Animation."
+                    : $"{(usingProfileDonor ? "Profile donor" : "Fallback donor")}: {Path.GetFileName(templatePapPath)}";
+                donorStatusText.Foreground = templatePapPath == null
+                    ? new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Orange)
+                    : null;
+                openAnimationSettingsButton.Visibility = templatePapPath == null ? Visibility.Visible : Visibility.Collapsed;
+            }
+            ResolveDonor();
 
             async System.Threading.Tasks.Task PickPapAsync(Action<string> setPath, TextBox fileNameBox)
             {
@@ -151,30 +176,12 @@ namespace STAGE
             {
                 stack.Children.Add(FileRow("Animation File", singlePapBox, pickSingleButton));
                 stack.Children.Add(singlePapNameBox);
-                stack.Children.Add(new TextBlock
-                {
-                    Text = templatePapPath == null
-                        ? "Donor animation is not configured. Set one under Settings → Animation."
-                        : $"Donor animation: {Path.GetFileName(templatePapPath)}",
-                    TextWrapping = TextWrapping.Wrap,
-                    Foreground = templatePapPath == null
-                        ? new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Orange)
-                    : null
-                });
+                stack.Children.Add(donorStatusText);
                 stack.Children.Add(openAnimationSettingsButton);
             }
             if (mode == PapImportMode.StartAndLoop)
             {
-                stack.Children.Add(new TextBlock
-                {
-                    Text = templatePapPath == null
-                        ? "Donor animation is not configured. Set one under Settings → Animation."
-                        : $"Loop donor animation: {Path.GetFileName(templatePapPath)}",
-                    TextWrapping = TextWrapping.Wrap,
-                    Foreground = templatePapPath == null
-                        ? new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Orange)
-                        : null
-                });
+                stack.Children.Add(donorStatusText);
                 stack.Children.Add(openAnimationSettingsButton);
             }
 
@@ -222,7 +229,11 @@ namespace STAGE
             startPapNameBox.TextChanged += (_, _) => UpdateImportEnabled();
             loopPapBox.TextChanged += (_, _) => UpdateImportEnabled();
             loopPapNameBox.TextChanged += (_, _) => UpdateImportEnabled();
-            groupCombo.SelectionChanged += (_, _) => UpdateImportEnabled();
+            groupCombo.SelectionChanged += (_, _) =>
+            {
+                ResolveDonor();
+                UpdateImportEnabled();
+            };
             UpdateImportEnabled();
 
             PapImportResult? importResult = null;
@@ -243,7 +254,8 @@ namespace STAGE
                         startPapNameBox.Text?.Trim(),
                         loopPapNameBox.Text?.Trim(),
                         loopPapPath,
-                        templatePapPath);
+                        templatePapPath,
+                        usingProfileDonor);
 
                     importResult = VfxPapImporter.Import(request);
                 }

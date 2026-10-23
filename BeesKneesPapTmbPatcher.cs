@@ -72,7 +72,7 @@ namespace STAGE
             File.WriteAllBytes(papPath, pap.ToBytes());
         }
 
-        public static void PatchImportedPapFromTemplate(string papPath, string templatePapPath)
+        public static void PatchImportedPapFromTemplate(string papPath, string templatePapPath, bool includeProfileSoundTracks = false)
         {
             if (!File.Exists(templatePapPath))
                 throw new FileNotFoundException("Pick a template PAP first.", templatePapPath);
@@ -96,10 +96,11 @@ namespace STAGE
 
             targetTmb.RetainPapAndExpressionTracks();
             targetTmb.RenamePapOnlyTracks(templateAnimationName);
-            int copiedTracks = targetTmb.ImportCompatibleNonSoundTracksFromTemplate(templateTmb);
-            targetTmb.RemoveSoundReferenceTracks();
+            int copiedTracks = targetTmb.ImportCompatibleTracksFromTemplate(templateTmb, includeProfileSoundTracks);
+            if (!includeProfileSoundTracks)
+                targetTmb.RemoveSoundReferenceTracks();
             if (copiedTracks == 0)
-                throw new InvalidDataException("The template PAP did not contain compatible non-sound TMB tracks to copy.");
+                throw new InvalidDataException("The template PAP did not contain compatible TMB tracks to copy.");
 
             targetPap.Animations[0].TmbBytes = targetTmb.ToBytes();
             string temporaryPath = papPath + ".stage-writing";
@@ -442,7 +443,7 @@ namespace STAGE
                 _actors[0].References.Add(imported.Track);
             }
 
-            public int ImportCompatibleNonSoundTracksFromTemplate(TmbDocument template)
+            public int ImportCompatibleTracksFromTemplate(TmbDocument template, bool includeSoundTracks)
             {
                 if (_actors.Count == 0)
                     throw new InvalidDataException("The embedded TMB has no Actor 0 to receive template tracks.");
@@ -454,7 +455,7 @@ namespace STAGE
                     .ToHashSet();
                 var templateTracks = template._actors[0].References
                     .Where(track => track.Magic == "TMTR")
-                    .Where(track => !track.References.Any(templateSoundEntries.Contains))
+                    .Where(track => includeSoundTracks || !track.References.Any(templateSoundEntries.Contains))
                     .Where(track => !track.References.Any(entry => entry.Magic == "C009"))
                     .Where(track => !track.References.Any(entry => entry.IsExpressionReference()))
                     .ToList();
@@ -466,7 +467,7 @@ namespace STAGE
                     var copiedEntries = new List<TmbItem>();
                     foreach (var templateEntry in templateTrack.References)
                     {
-                        if (templateEntry.IsSoundReference() ||
+                        if ((!includeSoundTracks && templateEntry.IsSoundReference()) ||
                             templateEntry.Magic == "C009" ||
                             templateEntry.IsExpressionReference())
                             continue;

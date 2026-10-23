@@ -23,7 +23,8 @@ namespace STAGE
         string? StartPapName,
         string? LoopPapName,
         string? LoopPapPath,
-        string? TemplatePapPath = null);
+        string? TemplatePapPath = null,
+        bool UseProfileTracks = false);
 
     public sealed record PapImportResult(
         string GroupPath,
@@ -94,7 +95,7 @@ namespace STAGE
             string modDirectory = GetModDirectory();
             Directory.CreateDirectory(modDirectory);
 
-            ModProfile profile = ModProfileDetector.Detect(modDirectory);
+            ModProfile profile = ModProfileDetector.Resolve(modDirectory);
             string preferredName = mode == PapImportMode.StartAndLoop
                 ? profile.StartLoopAnimationGroup ?? StepdanceGroupName
                 : profile.LoopAnimationGroup ?? BeesKneesGroupName;
@@ -180,7 +181,7 @@ namespace STAGE
             if (PenumbraMeta.TryLoad(modDirectory, out var meta))
             {
                 return meta!.Groups
-                    .Where(group => !VfxPapGroup.IsAudioPlaylistGroup(group))
+                    .Where(group => group.Kind == VfxPapGroupKind.Animation)
                     .Select(group => group.FilePath)
                     .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
                     .ToList();
@@ -192,7 +193,7 @@ namespace STAGE
                     try
                     {
                         var group = JsonConvert.DeserializeObject<VfxPapGroup>(File.ReadAllText(path));
-                        return group != null && !VfxPapGroup.IsAudioPlaylistGroup(ToPlaylistShape(group));
+                        return group?.Kind == VfxPapGroupKind.Animation;
                     }
                     catch
                     {
@@ -218,7 +219,8 @@ namespace STAGE
             {
                 BeesKneesPapTmbPatcher.PatchImportedPapFromTemplate(
                     Path.Combine(modDirectory, relativePapPath),
-                    request.TemplatePapPath);
+                    request.TemplatePapPath,
+                    request.UseProfileTracks);
             }
             else
             {
@@ -259,7 +261,8 @@ namespace STAGE
                 copiedFiles);
             BeesKneesPapTmbPatcher.PatchImportedPapFromTemplate(
                 Path.Combine(modDirectory, loopPath),
-                request.TemplatePapPath);
+                request.TemplatePapPath,
+                request.UseProfileTracks);
 
             return new Option
             {

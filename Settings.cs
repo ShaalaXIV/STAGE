@@ -206,7 +206,7 @@ namespace STAGE
             AddManagedModFolder(normalized);
             if (Directory.Exists(normalized))
             {
-                ModProfile profile = ModProfileDetector.Detect(normalized);
+                ModProfile profile = ModProfileDetector.Resolve(normalized);
                 if (PenumbraMeta.ContainsAudioGroups(normalized))
                 {
                     ActiveAudioModFolder = normalized;
@@ -216,6 +216,29 @@ namespace STAGE
                 if (PenumbraMeta.ContainsVfxGroups(normalized))
                     ActiveVfxModFolder = normalized;
             }
+        }
+
+        public static ModProfileKind? GetModProfileOverride(string modDirectory)
+        {
+            if (string.IsNullOrWhiteSpace(modDirectory)) return null;
+            using RegistryKey? key = Registry.CurrentUser.OpenSubKey(s_subKey + @"\ModProfiles");
+            string? value = key?.GetValue(GetModProfileValueName(modDirectory)) as string;
+            return Enum.TryParse(value, true, out ModProfileKind kind) ? kind : null;
+        }
+
+        public static void SetModProfileOverride(string modDirectory, ModProfileKind? kind)
+        {
+            if (string.IsNullOrWhiteSpace(modDirectory)) return;
+            using RegistryKey key = Registry.CurrentUser.CreateSubKey(s_subKey + @"\ModProfiles");
+            string valueName = GetModProfileValueName(modDirectory);
+            if (kind.HasValue) key.SetValue(valueName, kind.Value.ToString());
+            else key.DeleteValue(valueName, false);
+        }
+
+        private static string GetModProfileValueName(string modDirectory)
+        {
+            byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(NormalizeModFolder(modDirectory).ToUpperInvariant()));
+            return Convert.ToHexString(hash);
         }
 
         private static string NormalizeModFolder(string path)

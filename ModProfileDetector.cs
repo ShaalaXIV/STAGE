@@ -21,12 +21,32 @@ namespace STAGE
         string? BaselineScdKey,
         string? LoopAnimationGroup,
         string? StartLoopAnimationGroup,
-        bool UsesSeparateAudioMod);
+        bool UsesSeparateAudioMod,
+        string? PreferredAudioGroup = null);
 
     public static class ModProfileDetector
     {
         private static readonly ModProfile Generic = new(
             ModProfileKind.Generic, "Generic Penumbra Mod", null, "beesknees", "sdance", false);
+
+        public static IReadOnlyList<ModProfile> Profiles { get; } = new[]
+        {
+            Generic,
+            new ModProfile(ModProfileKind.Pickles, "Pickles", "sound/bpmloop.scd", "Dances", "Dances", false, "test"),
+            new ModProfile(ModProfileKind.Thunderdome, "Thunderdome", "sound/dam.scd", "Stage Toggle // Character Height", null, false, "MUSIC // My Playlist"),
+            new ModProfile(ModProfileKind.CassBase, "Cass Base", null, "beesknees", "sdance", false),
+            new ModProfile(ModProfileKind.ShaalaDj, "Shaala DJ", null, "beesknees", "sdance", true),
+            new ModProfile(ModProfileKind.YueLuDj, "Yue & Lu's DJ", "sound/lolo.scd", "Base Files", null, false, "EDM")
+        };
+
+        public static ModProfile GetProfile(ModProfileKind kind) =>
+            Profiles.First(profile => profile.Kind == kind);
+
+        public static ModProfile Resolve(string modDirectory)
+        {
+            ModProfileKind? assigned = Settings.GetModProfileOverride(modDirectory);
+            return assigned.HasValue ? GetProfile(assigned.Value) : Detect(modDirectory);
+        }
 
         public static ModProfile Detect(string modDirectory)
         {
@@ -51,38 +71,33 @@ namespace STAGE
                 if (HasGroups("VJ SCREEN // Background", "VJ SCREEN // Foreground", "VFX // Speaker RGB", "VFX // Speaker Effects") &&
                     HasPaths("sound/dam.scd", "vfx/Stage.avfx"))
                 {
-                    return new(ModProfileKind.Thunderdome, "Thunderdome", "sound/dam.scd",
-                        "Stage Toggle // Character Height", null, false);
+                    return GetProfile(ModProfileKind.Thunderdome);
                 }
 
                 if (HasGroups("Required to Play Music", "Dances", "DJ Booth Lights", "Lights and Lazers") &&
                     HasPaths("sound/bpmloop.scd", "vfx/bpmloop-others.avfx", "vfx/alinapickle2.avfx"))
                 {
-                    return new(ModProfileKind.Pickles, "Pickles", "sound/bpmloop.scd",
-                        "Dances", "Dances", false);
+                    return GetProfile(ModProfileKind.Pickles);
                 }
 
                 bool hasCassSlots = Enumerable.Range(1, 5).All(slot =>
                     gamePaths.Contains($"vfx/slot{slot}.avfx"));
                 if (HasGroups("beesknees", "beesknees 2", "sdance", "Luna VFX Options") && hasCassSlots)
                 {
-                    return new(ModProfileKind.CassBase, "Cass Base", null,
-                        "beesknees", "sdance", false);
+                    return GetProfile(ModProfileKind.CassBase);
                 }
 
                 bool hasShaalaSlots = Enumerable.Range(1, 6).All(slot =>
                     gamePaths.Contains($"vfx/slot{slot}.avfx"));
                 if (HasGroups("beesknees", "sdance", "Dance specific VFX colors", "DJ Groupings") && hasShaalaSlots)
                 {
-                    return new(ModProfileKind.ShaalaDj, "Shaala DJ", null,
-                        "beesknees", "sdance", true);
+                    return GetProfile(ModProfileKind.ShaalaDj);
                 }
 
                 if (HasGroups("Base Files", "Race", "Sparkle VFX", "EDM", "D&B") &&
                     HasPaths("sound/lolo.scd", "vfx/dj.avfx", "chara/human/c0101/animation/a0001/bt_common/emote_sp/sp12_loop.pap"))
                 {
-                    return new(ModProfileKind.YueLuDj, "Yue & Lu's DJ", "sound/lolo.scd",
-                        "Base Files", null, false);
+                    return GetProfile(ModProfileKind.YueLuDj);
                 }
             }
             catch
@@ -118,6 +133,72 @@ namespace STAGE
                 }
             }
             return groups;
+        }
+
+        public static string? ResolvePapDonor(string modDirectory, string groupReference)
+        {
+            if (Resolve(modDirectory).Kind == ModProfileKind.Generic)
+                return null;
+
+            VfxPapGroup? group = FindGroup(modDirectory, groupReference);
+            var mappings = group?.Options
+                .SelectMany(option => option.Files ?? new Dictionary<string, string>())
+                .Where(mapping => mapping.Key.EndsWith(".pap", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (mappings == null || mappings.Count == 0)
+                return null;
+
+            var loopMappings = mappings.Where(mapping =>
+                Path.GetFileNameWithoutExtension(mapping.Key).EndsWith("loop", StringComparison.OrdinalIgnoreCase)).ToList();
+            if (loopMappings.Count > 0)
+                mappings = loopMappings;
+
+            return mappings
+                .Select(mapping => ResolveExistingLocalFile(modDirectory, mapping.Value))
+                .Where(path => path != null)
+                .GroupBy(path => path!, StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(items => items.Count())
+                .Select(items => items.Key)
+                .FirstOrDefault();
+        }
+
+        public static string? ResolveScdDonor(string modDirectory)
+        {
+            if (string.IsNullOrWhiteSpace(modDirectory) || !Directory.Exists(modDirectory))
+                return null;
+
+            ModProfile profile = Resolve(modDirectory);
+            var groups = LoadGroups(modDirectory);
+            IEnumerable<VfxPapGroup> ordered = groups;
+            if (!string.IsNullOrWhiteSpace(profile.PreferredAudioGroup))
+                ordered = groups.OrderByDescending(group => string.Equals(group.Name, profile.PreferredAudioGroup, StringComparison.OrdinalIgnoreCase));
+
+            return ordered
+                .SelectMany(group => group.Options ?? new List<Option>())
+                .SelectMany(option => option.Files ?? new Dictionary<string, string>())
+                .Where(mapping => mapping.Key.EndsWith(".scd", StringComparison.OrdinalIgnoreCase) &&
+                                  mapping.Value.EndsWith(".scd", StringComparison.OrdinalIgnoreCase))
+                .Select(mapping => ResolveExistingLocalFile(modDirectory, mapping.Value))
+                .FirstOrDefault(path => path != null);
+        }
+
+        private static VfxPapGroup? FindGroup(string modDirectory, string groupReference)
+        {
+            if (PenumbraMeta.TryParseGroupReference(groupReference, out _, out string groupId, out string groupName))
+                return LoadGroups(modDirectory).FirstOrDefault(group =>
+                    string.Equals(group.Id, groupId, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(group.Name, groupName, StringComparison.OrdinalIgnoreCase));
+
+            return LoadGroups(modDirectory).FirstOrDefault(group =>
+                string.Equals(group.FilePath, groupReference, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static string? ResolveExistingLocalFile(string modDirectory, string localPath)
+        {
+            if (string.IsNullOrWhiteSpace(localPath)) return null;
+            string root = Path.GetFullPath(modDirectory).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            string candidate = Path.GetFullPath(Path.Combine(modDirectory, localPath.Replace('/', Path.DirectorySeparatorChar)));
+            return candidate.StartsWith(root, StringComparison.OrdinalIgnoreCase) && File.Exists(candidate) ? candidate : null;
         }
 
         public static string NormalizeGamePath(string path) =>

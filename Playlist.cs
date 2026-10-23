@@ -146,7 +146,11 @@ namespace STAGE
                     importPath = preparedAudioPath;
                 }
 
-                ScdFile scdFile = ScdFile.Import(importPath, processAudio: audioSettings == null);
+                string? modScdDonor = ModProfileDetector.ResolveScdDonor(GetAudioModDirectory());
+                ScdFile scdFile = ScdFile.Import(
+                    importPath,
+                    processAudio: audioSettings == null,
+                    templateScdPath: modScdDonor);
                 string filenameroot = Path.GetFileNameWithoutExtension(file);
                 if (filenameroot.Equals("bpmloop", StringComparison.OrdinalIgnoreCase))
                 {

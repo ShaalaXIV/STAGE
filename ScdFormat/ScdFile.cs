@@ -142,7 +142,7 @@ namespace VfxEditor.ScdFormat {
 
         public void Dispose() => Audio.ForEach( x => x.Dispose() );
 
-        public static ScdFile Import(string path, bool processAudio = true)
+        public static ScdFile Import(string path, bool processAudio = true, string? templateScdPath = null)
         {
             BinaryReader reader = null;
             try
@@ -155,7 +155,10 @@ namespace VfxEditor.ScdFormat {
                     return scdFile;
                 }
 
-                reader = new BinaryReader(System.IO.File.Open(Path.Combine(Directory.GetCurrentDirectory(), "default.scd"), FileMode.Open));
+                string templatePath = !string.IsNullOrWhiteSpace(templateScdPath) && File.Exists(templateScdPath)
+                    ? templateScdPath
+                    : Path.Combine(Directory.GetCurrentDirectory(), "default.scd");
+                reader = new BinaryReader(System.IO.File.Open(templatePath, FileMode.Open));
                 var file = new ScdFile(reader, false);
                 var oldEntry = file.Audio[0];
 

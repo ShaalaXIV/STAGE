@@ -36,6 +36,11 @@
                           Width="285"
                           PlaceholderText="Add a mod folder"
                           SelectionChanged="ActiveModComboBox_SelectionChanged"/>
+                <ComboBox x:Name="ModProfileComboBox"
+                          Width="190"
+                          Header=""
+                          ToolTipService.ToolTip="Detected base mod profile. Choose a profile to override detection for this mod."
+                          SelectionChanged="ModProfileComboBox_SelectionChanged"/>
             </StackPanel>
         <CommandBar Grid.Column="1" DefaultLabelPosition="Right" HorizontalAlignment="Left">
             <AppBarButton x:Name="AddSongsButton" x:Uid="AddSongsButton" Label="Add Songs" Icon="Add" Click="AddSongsButton_Click">

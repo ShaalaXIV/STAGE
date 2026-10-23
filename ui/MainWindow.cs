@@ -90,6 +90,71 @@ namespace STAGE
             {
                 _updatingActiveModSelector = false;
             }
+            UpdateModProfileSelector();
+        }
+
+        private void UpdateModProfileSelector()
+        {
+            if (ModProfileComboBox == null) return;
+            string path = GetCurrentModeModFolder();
+            _updatingActiveModSelector = true;
+            try
+            {
+                ModProfileComboBox.Items.Clear();
+                if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+                {
+                    ModProfileComboBox.PlaceholderText = "Profile unavailable";
+                    return;
+                }
+
+                ModProfileKind? assigned = Settings.GetModProfileOverride(path);
+                ModProfile detected = ModProfileDetector.Detect(path);
+                ModProfileComboBox.Items.Add(new ModProfileChoice(null,
+                    detected.Kind == ModProfileKind.Generic
+                        ? "Base mod not recognized • Choose profile"
+                        : $"{detected.DisplayName} • Auto-detected"));
+                foreach (ModProfile profile in ModProfileDetector.Profiles)
+                    ModProfileComboBox.Items.Add(new ModProfileChoice(profile.Kind,
+                        $"{profile.DisplayName} • Manual"));
+                ModProfileComboBox.SelectedIndex = assigned.HasValue
+                    ? ModProfileDetector.Profiles.ToList().FindIndex(profile => profile.Kind == assigned.Value) + 1
+                    : 0;
+
+                ModProfile resolved = ModProfileDetector.Resolve(path);
+                string? papDonor = null;
+                string defaultGroup = VfxPapImporter.SuggestedDefaultGroupPath(PapImportMode.SingleLoop);
+                if (string.Equals(path, Settings.VfxModFolder, StringComparison.OrdinalIgnoreCase))
+                    papDonor = ModProfileDetector.ResolvePapDonor(path, defaultGroup);
+                string? scdDonor = ModProfileDetector.ResolveScdDonor(path);
+                ToolTipService.SetToolTip(ModProfileComboBox,
+                    $"Base mod: {resolved.DisplayName}\n" +
+                    $"Recognition: {(assigned.HasValue ? "Manually assigned" : resolved.Kind == ModProfileKind.Generic ? "Not recognized" : "Auto-detected")}\n" +
+                    $"Animation donor: {(papDonor == null ? "manual fallback" : Path.GetFileName(papDonor))}\n" +
+                    $"Audio donor: {(scdDonor == null ? "manual fallback" : Path.GetFileName(scdDonor))}");
+            }
+            finally
+            {
+                _updatingActiveModSelector = false;
+            }
+        }
+
+        private void ModProfileComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_updatingActiveModSelector || ModProfileComboBox.SelectedItem is not ModProfileChoice choice)
+                return;
+            string path = GetCurrentModeModFolder();
+            if (string.IsNullOrWhiteSpace(path)) return;
+            Settings.SetModProfileOverride(path, choice.Kind);
+            ModProfile profile = ModProfileDetector.Resolve(path);
+            if (!string.IsNullOrWhiteSpace(profile.BaselineScdKey))
+                Settings.BaselineScdKey = profile.BaselineScdKey;
+            App.WriteStartupText("Mod profile selected", $"{profile.DisplayName}: {path}");
+            UpdateModProfileSelector();
+        }
+
+        private sealed record ModProfileChoice(ModProfileKind? Kind, string Label)
+        {
+            public override string ToString() => Label;
         }
 
         private async void ActiveModComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -112,9 +177,10 @@ namespace STAGE
                 Settings.ActiveVfxModFolder = path;
             else
                 Settings.ActiveAudioModFolder = path;
-            ModProfile profile = ModProfileDetector.Detect(path);
-            App.WriteStartupText("Mod profile detected", $"{profile.DisplayName}: {path}");
+            ModProfile profile = ModProfileDetector.Resolve(path);
+            App.WriteStartupText("Mod profile resolved", $"{profile.DisplayName}: {path}");
             ResetForActiveModChange();
+            UpdateModProfileSelector();
         }
 
         private string GetCurrentModeModFolder() =>
